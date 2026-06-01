@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deal Finder — Card Trading Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.10.0/dist/tabler-icons.min.css">
+<style>
+  :root {
+    --teal: #0F6E56; --teal-mid: #1D9E75; --teal-light: #E1F5EE;
+    --amber: #854F0B; --amber-light: #FAEEDA; --amber-mid: #BA7517;
+    --coral: #993C1D; --coral-light: #FAECE7; --coral-mid: #D85A30;
+    --green: #3B6D11; --green-light: #EAF3DE; --green-mid: #639922;
+    --purple: #534AB7; --purple-light: #EEEDFE; --purple-mid: #7F77DD;
+    --blue-light: #E6F1FB; --blue-mid: #378ADD; --blue-dark: #0C447C;
+    --gray-light: #F1EFE8; --gray-mid: #888780; --gray-dark: #444441;
+    --ink: #1a1a18; --muted: #5a5a56; --border: #e0ddd5;
+    --bg: #faf9f6; --surface: #ffffff; --surface-secondary: #f5f4f0;
+    --radius-md: 8px; --radius-lg: 12px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--ink); font-size: 14px; line-height: 1.6; }
+
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 2rem; display: flex; align-items: center; gap: 0;
+  }
+  .nav-brand {
+    font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600;
+    color: var(--ink); padding: 1rem 1.5rem 1rem 0;
+    border-right: 1px solid var(--border); margin-right: 1.5rem; white-space: nowrap;
+  }
+  .nav-links { display: flex; gap: 0; }
+  .nav-links a {
+    font-size: 13px; color: var(--muted); text-decoration: none;
+    padding: 1rem 0.875rem; border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s; white-space: nowrap;
+  }
+  .nav-links a:hover { color: var(--ink); }
+  .nav-links a.active { color: var(--teal); border-bottom-color: var(--teal); }
+
+  .page { max-width: 960px; margin: 0 auto; padding: 2.5rem 2rem 5rem; }
+
+  .df-header { padding: 1.5rem 0 1.25rem; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
+  .df-eyebrow { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .df-title { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 300; line-height: 1.2; color: var(--ink); }
+  .df-title em { font-style: italic; color: var(--teal-mid); }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; align-items: start; }
+
+  .panel { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .panel-head { padding: .75rem 1.25rem; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .panel-title { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .panel-body { padding: 1rem 1.25rem; }
+
+  .fw { display: flex; flex-direction: column; gap: 4px; margin-bottom: 9px; }
+  .flabel { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .fw select, .fw input { height: 36px; padding: 0 10px; border-radius: var(--radius-md); font-size: 13px; font-family: 'DM Sans', sans-serif; background: var(--surface-secondary); border: 0.5px solid var(--border); color: var(--ink); width: 100%; outline: none; }
+  .fw select:focus, .fw input:focus { border-color: var(--teal-mid); }
+  .fw select:disabled, .fw input:disabled { opacity: .38; cursor: not-allowed; }
+
+  .card-preview { background: var(--surface-secondary); border-radius: var(--radius-md); border: 0.5px solid var(--border); padding: .875rem; margin-bottom: 9px; display: none; }
+  .card-preview.show { display: block; }
+  .cp-top { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; }
+  .cp-art { width: 40px; height: 56px; border-radius: 4px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-size: 17px; font-weight: 300; }
+  .cp-name { font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 2px; }
+  .cp-meta { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-bottom: 5px; }
+  .cp-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+  .cond-row { display: flex; gap: 5px; }
+  .cond-btn { padding: 4px 9px; font-size: 12px; font-family: 'DM Sans', sans-serif; border-radius: var(--radius-md); border: 0.5px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; }
+  .cond-btn.sel { background: var(--teal-light); color: var(--teal); border-color: var(--teal-mid); }
+
+  .btn-add { width: 100%; height: 36px; border-radius: var(--radius-md); background: var(--teal); color: var(--teal-light); border: none; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 9px; }
+  .btn-add:hover { background: #085041; }
+  .btn-add:disabled { opacity: .4; cursor: not-allowed; }
+
+  .wl-item { display: flex; align-items: center; gap: 9px; padding: .5rem 1.25rem; border-bottom: 0.5px solid var(--border); }
+  .wl-item:last-child { border-bottom: none; }
+  .wl-art { width: 28px; height: 38px; border-radius: 3px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-family: 'Fraunces', serif; }
+  .wl-info { flex: 1; min-width: 0; }
+  .wl-name { font-size: 12px; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wl-sub { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 1px; }
+  .wl-remove { width: 24px; height: 24px; border-radius: var(--radius-md); border: 0.5px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .wl-remove:hover { background: var(--coral-light); color: var(--coral); border-color: var(--coral-mid); }
+
+  .wl-footer { padding: .5rem 1.25rem; border-top: 0.5px solid var(--border); background: var(--surface-secondary); display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); }
+  .limit-track { flex: 1; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .limit-fill { height: 100%; background: var(--teal-mid); border-radius: 2px; transition: width .3s; }
+  .limit-fill.warn { background: var(--amber-mid); }
+
+  .scan-bar { padding: .75rem 1.25rem; border-top: 0.5px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .margin-inline { display: flex; align-items: center; gap: 7px; flex: 1; }
+  .margin-inline span { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); white-space: nowrap; text-transform: uppercase; letter-spacing: .06em; }
+  .margin-inline input[type=range] { flex: 1; }
+  .mv { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: var(--ink); min-width: 30px; }
+  .btn-scan { height: 36px; padding: 0 14px; border-radius: var(--radius-md); background: var(--teal); color: var(--teal-light); border: none; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+  .btn-scan:hover { background: #085041; }
+  .btn-scan:disabled { opacity: .4; cursor: not-allowed; }
+
+  .pill { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 3px; display: inline-flex; align-items: center; gap: 3px; }
+  .pill-deal { background: var(--teal-light); color: var(--teal); }
+  .pill-pass { background: var(--gray-light); color: var(--gray-mid); }
+  .pill-cond { background: var(--surface-secondary); color: var(--muted); border: 0.5px solid var(--border); }
+  .pill-ship { background: var(--gray-light); color: var(--gray-dark); }
+  .pill-bin { background: var(--blue-light); color: var(--blue-dark); }
+  .pill-auction { background: var(--amber-light); color: #633806; }
+  .pill-both { background: var(--purple-light); color: #3C3489; }
+  .pill-rarity { background: var(--purple-light); color: #3C3489; }
+  .pill-tcg { background: var(--teal-light); color: var(--teal); }
+
+  .art-pokemon { background: var(--amber-light); color: var(--amber-mid); }
+  .art-onepiece { background: var(--coral-light); color: var(--coral-mid); }
+  .art-sports { background: var(--purple-light); color: var(--purple-mid); }
+
+  .results-section { margin-top: 1.5rem; }
+  .fee-strip { display: flex; gap: 14px; flex-wrap: wrap; padding: .5rem 1rem; background: var(--gray-light); border-radius: var(--radius-md); margin-bottom: 1.25rem; font-size: 11px; color: var(--muted); align-items: center; }
+  .fee-item { display: flex; align-items: center; gap: 4px; }
+  .fee-val { font-family: 'DM Mono', monospace; font-weight: 500; color: var(--gray-dark); }
+  .fee-api { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--gray-mid); }
+
+  .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 8px; }
+  .results-title { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 300; color: var(--ink); }
+  .filter-row { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+  .filter-sep { width: 1px; height: 13px; background: var(--border); margin: 0 2px; }
+  .ftab { padding: 4px 9px; font-size: 12px; font-family: 'DM Sans', sans-serif; border-radius: var(--radius-md); border: 0.5px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; white-space: nowrap; }
+  .ftab.on { background: var(--teal-light); color: var(--teal); border-color: var(--teal-mid); }
+
+  .card-group { margin-bottom: 8px; }
+  .cg-toggle { width: 100%; display: flex; align-items: center; gap: 10px; padding: .75rem 1.25rem; background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); cursor: pointer; text-align: left; font-family: 'DM Sans', sans-serif; transition: background .12s; }
+  .cg-toggle:hover { background: var(--surface-secondary); }
+  .cg-toggle.open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: transparent; }
+  .cg-art { font-size: 14px; font-family: 'Fraunces', serif; flex-shrink: 0; }
+  .cg-info { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .cg-name { font-family: 'Fraunces', serif; font-size: 15px; font-weight: 300; color: var(--ink); }
+  .cg-meta { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cg-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .deal-badge { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 3px; }
+  .deal-badge.has { background: var(--teal-light); color: var(--teal); }
+  .deal-badge.none { background: var(--gray-light); color: var(--gray-mid); }
+  .best-profit { font-family: 'Fraunces', serif; font-size: 16px; font-weight: 300; color: var(--teal); }
+  .chevron { font-size: 14px; color: var(--muted); transition: transform .2s; flex-shrink: 0; }
+  .chevron.open { transform: rotate(180deg); }
+
+  .cg-body { border: 0.5px solid var(--border); border-top: none; border-bottom-left-radius: var(--radius-lg); border-bottom-right-radius: var(--radius-lg); overflow: hidden; display: none; }
+  .cg-body.open { display: block; }
+
+  .rlist { display: flex; flex-direction: column; }
+  .rcard { background: var(--surface); border-bottom: 0.5px solid var(--border); }
+  .rcard:last-child { border-bottom: none; }
+  .rcard.deal { border-left: 3px solid var(--teal-mid); }
+  .rcard-body { display: grid; grid-template-columns: 40px 1fr auto; gap: 11px; padding: .75rem 1.25rem; align-items: start; }
+  .card-art-sm { width: 40px; height: 56px; border-radius: 4px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-size: 15px; font-weight: 300; }
+  .rbadges { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 4px; align-items: center; }
+  .rname { font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 6px; line-height: 1.4; }
+  .rprices { display: flex; gap: 10px; flex-wrap: wrap; }
+  .pfl { font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .pfv { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: var(--ink); }
+  .anote { margin-top: 5px; font-size: 11px; color: var(--amber); display: flex; align-items: center; gap: 4px; }
+  .rprofit { text-align: right; min-width: 68px; padding-top: 1px; }
+  .pnum { font-family: 'Fraunces', serif; font-size: 21px; font-weight: 300; line-height: 1; }
+  .pnum.pos { color: var(--teal); } .pnum.neg { color: var(--coral); }
+  .pmarg { font-family: 'DM Mono', monospace; font-size: 10px; margin-top: 2px; }
+  .pmarg.pos { color: var(--teal-mid); } .pmarg.neg { color: var(--coral-mid); }
+  .rfoot { display: flex; gap: 6px; padding: 0 1.25rem .625rem; }
+  .btn-bk { font-size: 11px; font-family: 'DM Sans', sans-serif; padding: 4px 9px; border-radius: var(--radius-md); border: 0.5px solid var(--teal-mid); color: var(--teal); background: transparent; cursor: pointer; }
+  .btn-bk:hover { background: var(--teal-light); }
+  .btn-eb { font-size: 11px; font-family: 'DM Sans', sans-serif; padding: 4px 9px; border-radius: var(--radius-md); border: 0.5px solid var(--border); color: var(--muted); background: transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; text-decoration: none; }
+  .btn-eb:hover { background: var(--surface-secondary); }
+  .bkdown { border-top: 0.5px solid var(--border); padding: .75rem 1.25rem; background: var(--surface-secondary); display: none; }
+  .bkdown.open { display: block; }
+  .bkg { display: grid; grid-template-columns: 1fr auto; gap: 3px 14px; }
+  .bkl { font-size: 12px; color: var(--muted); padding: 2px 0; }
+  .bkv { font-family: 'DM Mono', monospace; font-size: 11px; text-align: right; padding: 2px 0; }
+  .bkn { color: var(--coral); } .bkp { color: var(--teal); }
+  .bkdiv { grid-column: 1/-1; border-top: 0.5px solid var(--border); margin: 4px 0; }
+  .bkt .bkl { font-weight: 500; color: var(--ink); } .bkt .bkv { font-weight: 500; }
+  .wl-empty { padding: 1.75rem 1.25rem; text-align: center; color: var(--muted); font-size: 13px; }
+  .wl-empty-head { font-family: 'Fraunces', serif; font-size: 15px; font-weight: 300; color: var(--ink); margin-bottom: 3px; }
+  .no-results { padding: 2.5rem; text-align: center; color: var(--muted); }
+  .no-results-head { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 300; color: var(--ink); margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">Card Trading Engine</div>
+  <div class="nav-links">
+    <a href="deal-finder.html" class="active">Deal finder</a>
+    <a href="dashboard.html">Dashboard</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="df-header">
+    <div class="df-eyebrow">Deal finder · Phase 1</div>
+    <div class="df-title">Find underpriced <em>cards</em></div>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title">Card lookup</span></div>
+        <div class="panel-body">
+          <div class="fw"><span class="flabel">Game</span>
+            <select id="sel-game" onchange="onGame()">
+              <option value="">Select a game…</option>
+              <option value="pokemon">Pokémon</option>
+              <option value="onepiece">One Piece</option>
+              <option value="sports">Sports Cards</option>
+            </select>
+          </div>
+          <div class="fw"><span class="flabel">Set</span>
+            <select id="sel-set" disabled onchange="onSet()"><option value="">Select a set…</option></select>
+          </div>
+          <div class="fw"><span class="flabel">Card name or number</span>
+            <input type="text" id="inp-card" placeholder="e.g. Charizard or 199/165" disabled oninput="onCardInput(this.value)">
+          </div>
+          <div class="card-preview" id="card-preview">
+            <div class="cp-top">
+              <div class="cp-art" id="cp-art"></div>
+              <div><div class="cp-name" id="cp-name"></div><div class="cp-meta" id="cp-meta"></div><div class="cp-pills" id="cp-pills"></div></div>
+            </div>
+            <div class="cond-row" id="cond-row"></div>
+          </div>
+          <button class="btn-add" id="btn-add" disabled onclick="addCard()"><i class="ti ti-plus" aria-hidden="true"></i> Add to watchlist</button>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">Watchlist</span>
+          <span id="wl-count-label" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)"></span>
+        </div>
+        <div id="wl-body"></div>
+        <div class="wl-footer">
+          <span id="limit-text"></span>
+          <div class="limit-track"><div class="limit-fill" id="limit-fill" style="width:0%"></div></div>
+        </div>
+        <div class="scan-bar">
+          <div class="margin-inline">
+            <span>Min margin</span>
+            <input type="range" id="s-margin" min="10" max="60" step="5" value="30" oninput="document.getElementById('v-margin').textContent=this.value+'%';renderResults()">
+            <span class="mv" id="v-margin">30%</span>
+          </div>
+          <button class="btn-scan" id="btn-scan" onclick="runScan()"><i class="ti ti-search" aria-hidden="true"></i> Scan all</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="results-section" id="results-section" style="display:none">
+    <div class="fee-strip">
+      <div class="fee-item"><i class="ti ti-lock" style="font-size:12px" aria-hidden="true"></i><span>eBay fee</span><span class="fee-val">13.25%</span></div>
+      <div class="fee-item"><i class="ti ti-lock" style="font-size:12px" aria-hidden="true"></i><span>Payment</span><span class="fee-val">3.00%</span></div>
+      <div class="fee-item"><i class="ti ti-package" style="font-size:12px" aria-hidden="true"></i><span>Shipping tiered</span><span class="fee-val">$3 · $5.50 · $8</span></div>
+      <span class="fee-api" id="api-label"></span>
+    </div>
+    <div class="results-header">
+      <div class="results-title">Scan results</div>
+      <div class="filter-row" id="filter-row"></div>
+    </div>
+    <div id="results-wrap"></div>
+  </div>
+</div>
+
+<script>
+const MAX_WL=20,RATE=5;
+const DB={
+  pokemon:{
+    sets:["Base Set","Scarlet & Violet 151","Paldea Evolved","SWSH Promos","EX Dragon"],
+    cards:{
+      "Base Set":[
+        {num:"004/102",name:"Charizard",rarity:"Holo Rare",tcgMarket:290,tcgLow:210,art:'火'},
+        {num:"025/102",name:"Pikachu",rarity:"Common",tcgMarket:28,tcgLow:18,art:'⚡'},
+        {num:"009/102",name:"Blastoise",rarity:"Holo Rare",tcgMarket:140,tcgLow:95,art:'💧'},
+      ],
+      "Scarlet & Violet 151":[
+        {num:"006/165",name:"Charizard ex",rarity:"Double Rare",tcgMarket:52,tcgLow:38,art:'火'},
+        {num:"150/165",name:"Mewtwo ex",rarity:"Double Rare",tcgMarket:35,tcgLow:22,art:'🔮'},
+        {num:"199/165",name:"Charizard ex (Alt Art)",rarity:"Special Illustration Rare",tcgMarket:285,tcgLow:210,art:'火'},
+      ],
+      "Paldea Evolved":[
+        {num:"182/193",name:"Iono",rarity:"Ultra Rare",tcgMarket:44,tcgLow:30,art:'📱'},
+        {num:"230/193",name:"Iono (Alt Art)",rarity:"Special Illustration Rare",tcgMarket:195,tcgLow:140,art:'📱'},
+      ],
+      "SWSH Promos":[{num:"SWSH050",name:"Charizard V",rarity:"Promo",tcgMarket:22,tcgLow:14,art:'火'}],
+      "EX Dragon":[{num:"094/097",name:"Flygon (Holo)",rarity:"Holo Rare",tcgMarket:47,tcgLow:34,art:'🐉'}]
+    }
+  },
+  onepiece:{
+    sets:["OP-01 Romance Dawn","OP-05 Awakening","OP-06 Wings of Captain"],
+    cards:{
+      "OP-01 Romance Dawn":[
+        {num:"OP01-060",name:"Monkey D. Luffy (SEC)",rarity:"Secret Rare",tcgMarket:120,tcgLow:88,art:'⚓'},
+        {num:"OP01-001",name:"Roronoa Zoro (Leader)",rarity:"Leader",tcgMarket:22,tcgLow:15,art:'⚔️'},
+      ],
+      "OP-05 Awakening":[{num:"OP05-119",name:"Luffy Gear 5 (SEC)",rarity:"Secret Rare",tcgMarket:95,tcgLow:70,art:'☀️'}],
+      "OP-06 Wings of Captain":[{num:"OP06-118",name:"Luffy (SEC)",rarity:"Secret Rare",tcgMarket:75,tcgLow:55,art:'⚓'}]
+    }
+  },
+  sports:{
+    sets:["Topps Chrome 2003","Panini Prizm 2021","Panini Mosaic 2020"],
+    cards:{
+      "Topps Chrome 2003":[
+        {num:"111",name:"LeBron James RC",rarity:"Rookie",tcgMarket:450,tcgLow:320,art:'🏀'},
+        {num:"115",name:"Dwyane Wade RC",rarity:"Rookie",tcgMarket:85,tcgLow:60,art:'🏀'},
+      ],
+      "Panini Prizm 2021":[{num:"001",name:"LeBron James",rarity:"Base",tcgMarket:48,tcgLow:32,art:'🏀'}],
+      "Panini Mosaic 2020":[{num:"007",name:"LeBron James",rarity:"Base",tcgMarket:32,tcgLow:22,art:'🏀'}]
+    }
+  }
+};
+const LISTINGS={
+  "Charizard ex (Alt Art)":[
+    {id:1,title:"Pokemon 151 Charizard ex Alt Art 199/165 NM",price:89.99,condition:"NM",sold30:7,lt:"bin"},
+    {id:2,title:"SV 151 Charizard ex SIR 199/165 — Auction",price:145,condition:"NM",sold30:4,lt:"auction"},
+    {id:3,title:"Charizard ex Alt Art 199/165 SV 151 LP",price:62,condition:"LP",sold30:3,lt:"bin"},
+    {id:4,title:"Pokemon SV 151 Charizard ex SIR NM/M",price:105,condition:"NM",sold30:5,lt:"both"},
+    {id:5,title:"SV 151 Charizard ex Alt Art 199/165 NM",price:79,condition:"NM",sold30:6,lt:"bin"},
+  ],
+  "Charizard":[
+    {id:6,title:"1999 Pokemon Base Set Charizard 4/102 Holo NM",price:185,condition:"NM",sold30:2,lt:"bin"},
+    {id:7,title:"Base Set Charizard 4/102 Holo Rare LP",price:130,condition:"LP",sold30:3,lt:"auction"},
+    {id:8,title:"Pokemon Charizard Base Set 4/102 Holo NM",price:220,condition:"NM",sold30:2,lt:"bin"},
+  ],
+  "Monkey D. Luffy (SEC)":[
+    {id:10,title:"One Piece TCG OP01-060 Luffy SEC NM EN",price:38,condition:"NM",sold30:8,lt:"bin"},
+    {id:11,title:"OP01 Luffy SEC Romance Dawn NM — Auction",price:55,condition:"NM",sold30:5,lt:"auction"},
+    {id:12,title:"One Piece OP01-060 Secret Rare Luffy LP",price:29,condition:"LP",sold30:6,lt:"bin"},
+    {id:13,title:"OP01 Luffy SEC English NM BIN+Auction",price:44,condition:"NM",sold30:7,lt:"both"},
+  ],
+  "LeBron James RC":[
+    {id:14,title:"2003-04 Topps Chrome LeBron James Rookie #111 NM",price:185,condition:"NM",sold30:3,lt:"bin"},
+    {id:15,title:"LeBron James 2003 Topps Chrome RC #111 LP",price:120,condition:"LP",sold30:4,lt:"auction"},
+    {id:16,title:"Topps Chrome 2003-04 LeBron RC 111 NM",price:210,condition:"NM",sold30:2,lt:"bin"},
+    {id:17,title:"LeBron James Rookie Topps Chrome #111 NM",price:165,condition:"NM",sold30:3,lt:"both"},
+  ],
+  "Iono (Alt Art)":[
+    {id:18,title:"Iono Alt Art 230/193 Paldea Evolved SIR NM",price:58,condition:"NM",sold30:11,lt:"bin"},
+    {id:19,title:"Pokemon Iono SIR 230/193 Near Mint",price:72,condition:"NM",sold30:8,lt:"bin"},
+    {id:20,title:"Iono Special Illustration Rare Paldea LP",price:44,condition:"LP",sold30:5,lt:"auction"},
+    {id:21,title:"Paldea Evolved Iono 230/193 Alt Art NM",price:65,condition:"NM",sold30:9,lt:"both"},
+  ]
+};
+const SEED=[
+  {game:'pokemon',set:'Scarlet & Violet 151',num:'199/165',name:'Charizard ex (Alt Art)',rarity:'Special Illustration Rare',tcgMarket:285,tcgLow:210,art:'火',condition:'NM'},
+  {game:'pokemon',set:'Base Set',num:'004/102',name:'Charizard',rarity:'Holo Rare',tcgMarket:290,tcgLow:210,art:'火',condition:'LP'},
+  {game:'onepiece',set:'OP-01 Romance Dawn',num:'OP01-060',name:'Monkey D. Luffy (SEC)',rarity:'Secret Rare',tcgMarket:120,tcgLow:88,art:'⚓',condition:'NM'},
+  {game:'sports',set:'Topps Chrome 2003',num:'111',name:'LeBron James RC',rarity:'Rookie',tcgMarket:450,tcgLow:320,art:'🏀',condition:'NM'},
+  {game:'pokemon',set:'Paldea Evolved',num:'230/193',name:'Iono (Alt Art)',rarity:'Special Illustration Rare',tcgMarket:195,tcgLow:140,art:'📱',condition:'NM'},
+  {game:'pokemon',set:'EX Dragon',num:'094/097',name:'Flygon (Holo)',rarity:'Holo Rare',tcgMarket:47,tcgLow:34,art:'🐉',condition:'NM'},
+];
+const EBAY=0.1325,PAY=0.03;
+function ship(p){return p>=100?8:p>=40?5.5:3;}
+function shipLbl(p){return p>=100?'$8 sig.':p>=40?'$5.50':'$3';}
+function calc(price,tcgMarket){
+  const s=tcgMarket*0.85,e=s*EBAY,pa=s*PAY,sh=ship(price),pr=s-e-pa-sh-price;
+  return{sellAt:s,ea:e,pa,sh,profit:pr,margin:(pr/s)*100};
+}
+function minM(){return parseInt(document.getElementById('s-margin').value);}
+let watchlist=SEED.map((w,i)=>({...w,key:'s'+i}));
+let expanded=new Set(),activeTab='deals',activeType='all',openGroups=new Set();
+let selCard=null,selCond='NM';
+
+function tpill(t){
+  if(t==='bin') return '<span class="pill pill-bin"><i class="ti ti-tag" style="font-size:10px" aria-hidden="true"></i> BIN</span>';
+  if(t==='auction') return '<span class="pill pill-auction"><i class="ti ti-gavel" style="font-size:10px" aria-hidden="true"></i> Auction</span>';
+  return '<span class="pill pill-both"><i class="ti ti-tag" style="font-size:10px" aria-hidden="true"></i><i class="ti ti-gavel" style="font-size:10px" aria-hidden="true"></i> BIN+Auction</span>';
+}
+function wlStyle(g){if(g==='pokemon')return'background:#FAEEDA;color:#BA7517';if(g==='onepiece')return'background:#FAECE7;color:#D85A30';return'background:#EEEDFE;color:#7F77DD';}
+function wlTag(g){return g==='pokemon'?'PKM':g==='onepiece'?'OP':'SPT';}
+function onGame(){
+  const g=document.getElementById('sel-game').value,se=document.getElementById('sel-set'),ce=document.getElementById('inp-card');
+  se.innerHTML='<option value="">Select a set…</option>';se.disabled=!g;ce.disabled=true;ce.value='';hideP();
+  if(!g)return;
+  DB[g].sets.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;se.appendChild(o);});
+}
+function onSet(){const ce=document.getElementById('inp-card');ce.disabled=false;ce.value='';ce.focus();hideP();}
+function hideP(){document.getElementById('card-preview').classList.remove('show');document.getElementById('btn-add').disabled=true;selCard=null;}
+function onCardInput(v){
+  const g=document.getElementById('sel-game').value,s=document.getElementById('sel-set').value;
+  if(!g||!s||!v.trim()){hideP();return;}
+  const q=v.trim().toLowerCase();
+  const m=(DB[g].cards[s]||[]).find(c=>c.num.toLowerCase()===q||c.name.toLowerCase().includes(q));
+  m?showP(m,g,s):hideP();
+}
+function showP(card,game,set){
+  selCard={...card,game,set};selCond='NM';
+  document.getElementById('cp-art').className='cp-art art-'+game;
+  document.getElementById('cp-art').textContent=card.art;
+  document.getElementById('cp-name').textContent=card.name;
+  document.getElementById('cp-meta').textContent=card.num+' · '+set;
+  document.getElementById('cp-pills').innerHTML=`<span class="pill pill-rarity">${card.rarity}</span><span class="pill pill-tcg">TCG $${card.tcgMarket}</span>`;
+  document.getElementById('cond-row').innerHTML=['NM','LP','MP','HP'].map(c=>`<button class="cond-btn ${c==='NM'?'sel':''}" onclick="pickCond('${c}',this)">${c}</button>`).join('');
+  document.getElementById('card-preview').classList.add('show');
+  document.getElementById('btn-add').disabled=watchlist.length>=MAX_WL;
+}
+function pickCond(c,btn){selCond=c;document.querySelectorAll('.cond-btn').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');}
+function addCard(){
+  if(!selCard||watchlist.length>=MAX_WL)return;
+  if(watchlist.find(w=>w.game===selCard.game&&w.set===selCard.set&&w.num===selCard.num&&w.condition===selCond))return;
+  watchlist.push({...selCard,condition:selCond,key:Date.now()+''});
+  document.getElementById('inp-card').value='';hideP();
+  renderWL();if(document.getElementById('results-section').style.display!=='none')renderResults();
+}
+function removeCard(key){watchlist=watchlist.filter(w=>w.key!==key);renderWL();if(document.getElementById('results-section').style.display!=='none')renderResults();}
+function renderWL(){
+  const n=watchlist.length;
+  document.getElementById('wl-count-label').textContent=n+' / '+MAX_WL;
+  document.getElementById('btn-scan').disabled=n===0;
+  const pct=Math.round((n/MAX_WL)*100);
+  const fill=document.getElementById('limit-fill');
+  fill.style.width=pct+'%';fill.className='limit-fill'+(n>=MAX_WL*0.8?' warn':'');
+  document.getElementById('limit-text').textContent=n>=MAX_WL?'Watchlist full':`${MAX_WL-n} slots left · ${RATE} concurrent queries`;
+  const body=document.getElementById('wl-body');
+  if(!n){body.innerHTML='<div class="wl-empty"><div class="wl-empty-head">No cards yet</div>Look up a card on the left.</div>';return;}
+  body.innerHTML=watchlist.map(w=>`<div class="wl-item">
+    <div class="wl-art art-${w.game}">${w.art}</div>
+    <div class="wl-info"><div class="wl-name">${w.name}</div><div class="wl-sub">${w.num} · ${w.set}</div></div>
+    <span class="pill" style="${wlStyle(w.game)};margin-right:3px">${wlTag(w.game)}</span>
+    <span class="pill pill-cond">${w.condition}</span>
+    <button class="wl-remove" onclick="removeCard('${w.key}')" aria-label="Remove"><i class="ti ti-x" style="font-size:11px" aria-hidden="true"></i></button>
+  </div>`).join('');
+}
+function runScan(){
+  if(!watchlist.length)return;
+  document.getElementById('results-section').style.display='block';
+  document.getElementById('api-label').textContent=watchlist.length+' eBay quer'+(watchlist.length===1?'y':'ies')+' · '+RATE+' concurrent';
+  document.getElementById('results-wrap').innerHTML=`<div style="padding:2rem;text-align:center;color:var(--muted);font-size:13px"><span style="font-family:'Fraunces',serif;font-size:18px;font-weight:300;color:var(--ink);display:block;margin-bottom:3px">Scanning ${watchlist.length} cards…</span>Running ${watchlist.length} queries, ${RATE} at a time</div>`;
+  document.getElementById('results-section').scrollIntoView({behavior:'smooth',block:'start'});
+  setTimeout(()=>{
+    activeTab='deals';activeType='all';expanded=new Set();openGroups=new Set();
+    const withDeals=watchlist.filter(w=>(LISTINGS[w.name]||[]).some(l=>calc(l.price,w.tcgMarket).margin>=minM()));
+    if(withDeals.length>0)openGroups.add(withDeals[0].key);
+    renderResults();
+  },650);
+}
+function getListing(wcard){return(LISTINGS[wcard.name]||[]).map(l=>({...l,wcard,deal:calc(l.price,wcard.tcgMarket)}));}
+function typeMatch(l){if(activeType==='all')return true;if(activeType==='bin')return l.lt==='bin'||l.lt==='both';if(activeType==='auction')return l.lt==='auction'||l.lt==='both';return true;}
+function toggleGroup(key){openGroups.has(key)?openGroups.delete(key):openGroups.add(key);renderResults();}
+function renderResults(){
+  const mm=minM();
+  let allL=[];watchlist.forEach(w=>{allL=allL.concat(getListing(w));});
+  const totalDeals=allL.filter(l=>l.deal.margin>=mm).length;
+  document.getElementById('api-label').textContent=watchlist.length+' eBay quer'+(watchlist.length===1?'y':'ies')+' · '+RATE+' concurrent';
+  document.getElementById('filter-row').innerHTML=`
+    <button class="ftab ${activeTab==='deals'?'on':''}" onclick="setTab('deals')">Deals ${totalDeals}</button>
+    <button class="ftab ${activeTab==='all'?'on':''}" onclick="setTab('all')">All ${allL.length}</button>
+    <div class="filter-sep"></div>
+    <button class="ftab ${activeType==='all'?'on':''}" onclick="setType('all')">All types</button>
+    <button class="ftab" style="${activeType==='bin'?'background:#E6F1FB;color:#0C447C;border-color:#378ADD':''}" onclick="setType('bin')"><i class="ti ti-tag" style="font-size:10px;vertical-align:-1px" aria-hidden="true"></i> BIN</button>
+    <button class="ftab" style="${activeType==='auction'?'background:#FAEEDA;color:#633806;border-color:#BA7517':''}" onclick="setType('auction')"><i class="ti ti-gavel" style="font-size:10px;vertical-align:-1px" aria-hidden="true"></i> Auction</button>`;
+  let h='';let anyShown=false;
+  for(const wcard of watchlist){
+    const all=getListing(wcard);
+    const gDeals=all.filter(l=>l.deal.margin>=mm).length;
+    if(activeTab==='deals'&&gDeals===0)continue;
+    const shown=all.filter(l=>typeMatch(l)&&(activeTab==='all'||l.deal.margin>=mm));
+    if(!shown.length)continue;
+    anyShown=true;
+    const isOpen=openGroups.has(wcard.key);
+    const bestDeal=shown.filter(l=>l.deal.margin>=mm).sort((a,b)=>b.deal.profit-a.deal.profit)[0];
+    h+=`<div class="card-group">
+      <button class="cg-toggle ${isOpen?'open':''}" onclick="toggleGroup('${wcard.key}')">
+        <span class="cg-art">${wcard.art}</span>
+        <span class="cg-info">
+          <span class="cg-name">${wcard.name}</span>
+          <span class="cg-meta">${wcard.set} · ${wcard.num} · TCG $${wcard.tcgMarket} · ${wcard.condition}</span>
+        </span>
+        <span class="cg-right">
+          ${bestDeal?`<span class="best-profit">+$${bestDeal.deal.profit.toFixed(0)}</span>`:''}
+          <span class="deal-badge ${gDeals>0?'has':'none'}">${gDeals} deal${gDeals!==1?'s':''}</span>
+          <i class="ti ti-chevron-down chevron ${isOpen?'open':''}" aria-hidden="true"></i>
+        </span>
+      </button>
+      <div class="cg-body ${isOpen?'open':''}"><div class="rlist">`;
+    for(const l of shown){
+      const isDeal=l.deal.margin>=mm,isExp=expanded.has(l.id),mc=isDeal?'pos':'neg';
+      const isAuction=l.lt==='auction'||l.lt==='both';
+      h+=`<div class="rcard ${isDeal?'deal':''}">
+        <div class="rcard-body">
+          <div class="card-art-sm art-${wcard.game}">${wcard.art}</div>
+          <div>
+            <div class="rbadges">
+              <span class="pill ${isDeal?'pill-deal':'pill-pass'}">${isDeal?'Deal ✓':'Pass'}</span>
+              <span class="pill pill-cond">${l.condition}</span>
+              ${tpill(l.lt)}
+              <span class="pill pill-ship"><i class="ti ti-package" style="font-size:10px;vertical-align:-1px" aria-hidden="true"></i> ${shipLbl(l.price)}</span>
+            </div>
+            <div class="rname">${l.title}</div>
+            <div class="rprices">
+              <div><div class="pfl">Listed</div><div class="pfv">$${l.price.toFixed(2)}</div></div>
+              <div><div class="pfl">TCG mkt</div><div class="pfv">$${wcard.tcgMarket.toFixed(0)}</div></div>
+              <div><div class="pfl">Est. sell</div><div class="pfv">$${l.deal.sellAt.toFixed(2)}</div></div>
+              <div><div class="pfl">Sales/30d</div><div class="pfv">${l.sold30}</div></div>
+            </div>
+            ${isAuction?'<div class="anote"><i class="ti ti-clock" style="font-size:11px" aria-hidden="true"></i> Auction — margin shown at current bid</div>':''}
+          </div>
+          <div class="rprofit">
+            <div class="pnum ${mc}">$${l.deal.profit.toFixed(2)}</div>
+            <div class="pmarg ${mc}">${l.deal.margin.toFixed(0)}% margin</div>
+          </div>
+        </div>
+        <div class="rfoot">
+          <button class="btn-bk" onclick="togBk(${l.id})">${isExp?'Hide':'Show'} breakdown</button>
+          <a class="btn-eb" href="https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(l.title)}" target="_blank" rel="noopener"><i class="ti ti-external-link" aria-hidden="true"></i> View on eBay</a>
+        </div>
+        <div class="bkdown ${isExp?'open':''}" id="bk-${l.id}">
+          <div class="bkg">
+            <span class="bkl">Est. sell (85% of TCG market)</span><span class="bkv">$${l.deal.sellAt.toFixed(2)}</span>
+            <span class="bkl">− eBay seller fee (13.25%)</span><span class="bkv bkn">−$${l.deal.ea.toFixed(2)}</span>
+            <span class="bkl">− Payment processing (3.00%)</span><span class="bkv bkn">−$${l.deal.pa.toFixed(2)}</span>
+            <span class="bkl">− Shipping (tiered)</span><span class="bkv bkn">−$${l.deal.sh.toFixed(2)}</span>
+            <span class="bkl">− Purchase price</span><span class="bkv bkn">−$${l.price.toFixed(2)}</span>
+            <div class="bkdiv"></div>
+            <span class="bkl bkt">Net profit</span><span class="bkv ${mc} bkt">$${l.deal.profit.toFixed(2)} · ${l.deal.margin.toFixed(0)}%</span>
+          </div>
+        </div>
+      </div>`;
+    }
+    h+='</div></div></div>';
+  }
+  if(!anyShown)h=`<div class="no-results"><div class="no-results-head">No deals found</div><span style="font-size:13px">Lower your margin threshold or switch to All.</span></div>`;
+  document.getElementById('results-wrap').innerHTML=h;
+}
+function togBk(id){expanded.has(id)?expanded.delete(id):expanded.add(id);renderResults();}
+function setTab(t){activeTab=t;renderResults();}
+function setType(t){activeType=t;renderResults();}
+renderWL();
+setTimeout(()=>{
+  document.getElementById('results-section').style.display='block';
+  document.getElementById('api-label').textContent=watchlist.length+' eBay queries · '+RATE+' concurrent';
+  const withDeals=watchlist.filter(w=>(LISTINGS[w.name]||[]).some(l=>calc(l.price,w.tcgMarket).margin>=minM()));
+  if(withDeals.length>0)openGroups.add(withDeals[0].key);
+  renderResults();
+},80);
+</script>
+</body>
+</html>
