@@ -7,6 +7,7 @@ import OpportunityRank from '@/components/dashboard/OpportunityRank';
 import MomentumRank from '@/components/dashboard/MomentumRank';
 import ScatterChart from '@/components/dashboard/ScatterChart';
 import DealBarChart from '@/components/dashboard/DealBarChart';
+import TopMovers from '@/components/dashboard/TopMovers';
 
 interface DashboardData {
   stats: {
@@ -139,6 +140,10 @@ export default function DashboardPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem', alignItems: 'start' }}>
             <OpportunityRank cards={data.opportunityCards} />
             <MomentumRank    cards={data.momentumCards} />
+          </div>
+
+          <div style={{ marginBottom: '1.25rem' }}>
+            <TopMovers />
           </div>
 
           <ScatterChart points={data.scatterPoints} />

@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 interface TcgSet {
-  id:   string;
+  id:   string | number;
   name: string;
   code: string;
 }
 
 interface TcgCard {
-  id:        string;
+  id:        string | number;
   name:      string;
   number:    string;
   rarity:    string;
@@ -28,6 +28,13 @@ interface SelectedCard extends TcgCard {
   art:     string;
 }
 
+interface WatchlistEntry {
+  game:       string;
+  set:        string;
+  cardNumber: string;
+  condition:  string;
+}
+
 interface Props {
   onAdd: (card: {
     game:       string;
@@ -39,7 +46,9 @@ interface Props {
     tcgMarket:  number;
     tcgLow:     number;
     art:        string;
+    tcgCardId:  string;
   }) => void;
+  watchlist:      WatchlistEntry[];
   watchlistCount: number;
   maxWatchlist:   number;
 }
@@ -47,10 +56,17 @@ interface Props {
 const GAMES = [
   { value: 'pokemon',  label: 'Pokémon' },
   { value: 'onepiece', label: 'One Piece' },
-  { value: 'sports',   label: 'Sports Cards' },
 ];
 
 const CONDITIONS = ['NM', 'LP', 'MP', 'HP'] as const;
+
+// Standard TCG condition price multipliers relative to NM market price
+const COND_MULTIPLIER: Record<string, number> = {
+  NM: 1.00,
+  LP: 0.85,
+  MP: 0.70,
+  HP: 0.50,
+};
 
 function artClass(game: string) {
   if (game === 'pokemon')  return 'art-pokemon';
@@ -58,7 +74,7 @@ function artClass(game: string) {
   return 'art-sports';
 }
 
-export default function CardLookup({ onAdd, watchlistCount, maxWatchlist }: Props) {
+export default function CardLookup({ onAdd, watchlist, watchlistCount, maxWatchlist }: Props) {
   const [game, setGame]       = useState('');
   const [sets, setSets]       = useState<TcgSet[]>([]);
   const [setId, setSetId]     = useState('');
@@ -68,34 +84,31 @@ export default function CardLookup({ onAdd, watchlistCount, maxWatchlist }: Prop
   const [selCard, setSelCard] = useState<SelectedCard | null>(null);
   const [condition, setCond]  = useState<string>('NM');
   const [loading, setLoading] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch sets when game changes
   useEffect(() => {
-    if (!game) { setSets([]); setSetId(''); setCards([]); setSelCard(null); return; }
+    if (!game) { setSets([]); setSetId(''); setQuery(''); setCards([]); setSelCard(null); return; }
     fetch(`/api/sets?game=${game}`)
       .then((r) => r.json())
       .then(setSets)
       .catch(console.error);
   }, [game]);
 
-  // Debounced card search
+  // Debounced card search — fires 400 ms after the user stops typing
   useEffect(() => {
-    if (!game || !setId || !query.trim()) { setCards([]); setSelCard(null); return; }
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
+    if (!game || query.trim().length < 2) { setCards([]); setSelCard(null); return; }
+    const id = setTimeout(() => {
       setLoading(true);
-      try {
-        const res = await fetch(`/api/cards?game=${game}&set=${encodeURIComponent(setId)}&q=${encodeURIComponent(query)}`);
-        const data: TcgCard[] = await res.json();
-        setCards(data);
-        if (data.length === 1) pickCard(data[0]);
-        else setSelCard(null);
-      } finally {
-        setLoading(false);
-      }
-    }, 250);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+      setSelCard(null);
+      const params = new URLSearchParams({ game, q: query });
+      if (setId) params.set('set', setId);
+      fetch(`/api/cards?${params}`)
+        .then((r) => r.json())
+        .then((data: TcgCard[]) => setCards(Array.isArray(data) ? data : []))
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }, 400);
+    return () => clearTimeout(id);
   }, [game, setId, query]);
 
   function pickCard(card: TcgCard) {
@@ -105,6 +118,9 @@ export default function CardLookup({ onAdd, watchlistCount, maxWatchlist }: Prop
 
   function handleAdd() {
     if (!selCard || watchlistCount >= maxWatchlist) return;
+    const mult      = COND_MULTIPLIER[condition] ?? 1;
+    const nmMarket  = selCard.prices.market ?? selCard.prices.foil ?? 0;
+    const nmLow     = selCard.prices.low ?? 0;
     onAdd({
       game:       selCard.game,
       set:        selCard.setName,
@@ -112,16 +128,18 @@ export default function CardLookup({ onAdd, watchlistCount, maxWatchlist }: Prop
       cardName:   selCard.name,
       rarity:     selCard.rarity,
       condition,
-      tcgMarket:  selCard.prices.market ?? 0,
-      tcgLow:     selCard.prices.low ?? 0,
+      tcgMarket:  Math.round(nmMarket * mult * 100) / 100,
+      tcgLow:     Math.round(nmLow    * mult * 100) / 100,
       art:        selCard.art,
+      tcgCardId:  String(selCard.id),
     });
-    setQuery('');
-    setSelCard(null);
-    setCards([]);
   }
 
-  const canAdd = !!selCard && watchlistCount < maxWatchlist;
+  const alreadyAdded = !!selCard && watchlist.some(
+    (w) => w.game === selCard.game && w.set === selCard.setName &&
+           w.cardNumber === selCard.number && w.condition === condition,
+  );
+  const canAdd = !!selCard && watchlistCount < maxWatchlist && !alreadyAdded;
 
   return (
     <div className="panel">
@@ -134,7 +152,7 @@ export default function CardLookup({ onAdd, watchlistCount, maxWatchlist }: Prop
           <span className="flabel">Game</span>
           <select
             value={game}
-            onChange={(e) => { setGame(e.target.value); setSetId(''); setSetName(''); setQuery(''); setSelCard(null); }}
+            onChange={(e) => { setGame(e.target.value); setSetId(''); setSetName(''); setQuery(''); setCards([]); setSelCard(null); }}
           >
             <option value="">Select a game…</option>
             {GAMES.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
@@ -148,10 +166,11 @@ export default function CardLookup({ onAdd, watchlistCount, maxWatchlist }: Prop
             value={setId}
             disabled={!game || sets.length === 0}
             onChange={(e) => {
-              const s = sets.find((x) => x.id === e.target.value);
+              const s = sets.find((x) => String(x.id) === e.target.value);
               setSetId(e.target.value);
               setSetName(s?.name ?? '');
               setQuery('');
+              setCards([]);
               setSelCard(null);
             }}
           >
@@ -162,40 +181,38 @@ export default function CardLookup({ onAdd, watchlistCount, maxWatchlist }: Prop
 
         {/* Card search */}
         <div className="fw">
-          <span className="flabel">Card name or number</span>
+          <span className="flabel">Search</span>
           <input
             type="text"
-            placeholder="e.g. Charizard or 004/102"
-            disabled={!setId}
+            placeholder={game ? 'Type a card name…' : 'Select a game first'}
+            disabled={!game}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => { setQuery(e.target.value); setSelCard(null); }}
           />
         </div>
 
-        {/* Card results dropdown (when multiple matches) */}
-        {cards.length > 1 && !selCard && (
-          <div style={{ border: '0.5px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: 9 }}>
-            {cards.slice(0, 8).map((c) => (
-              <button
-                key={c.id}
-                onClick={() => pickCard(c)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  width: '100%', padding: '6px 10px',
-                  background: 'transparent', border: 'none',
-                  borderBottom: '0.5px solid var(--border)',
-                  cursor: 'pointer', textAlign: 'left', fontSize: 13,
-                }}
-              >
-                <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: 'var(--muted)', width: 70 }}>
-                  {c.number}
-                </span>
-                <span style={{ flex: 1, color: 'var(--ink)', fontWeight: 500 }}>{c.name}</span>
-                <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: 'var(--muted)' }}>
-                  {c.prices.market != null ? `$${c.prices.market}` : '—'}
-                </span>
-              </button>
-            ))}
+        {/* Results */}
+        {(loading || cards.length > 0 || query.trim().length >= 2) && (
+          <div className="fw">
+            <span className="flabel">Card</span>
+            <select
+              value={selCard?.id ?? ''}
+              disabled={loading || cards.length === 0}
+              onChange={(e) => {
+                const c = cards.find((x) => String(x.id) === e.target.value);
+                if (c) pickCard(c);
+              }}
+            >
+              <option value="">
+                {loading ? 'Searching…' : cards.length === 0 ? 'No results' : 'Select a card…'}
+              </option>
+              {cards.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.number ? `${c.number} — ${c.name}` : c.name}
+                  {(c.prices.market ?? c.prices.foil) != null ? `  ($${c.prices.market ?? c.prices.foil})` : ''}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
@@ -209,9 +226,11 @@ export default function CardLookup({ onAdd, watchlistCount, maxWatchlist }: Prop
                 <div className="cp-meta">{selCard.number} · {selCard.setName}</div>
                 <div className="cp-pills">
                   <span className="pill pill-rarity">{selCard.rarity}</span>
-                  {selCard.prices.market != null && (
-                    <span className="pill pill-tcg">TCG ${selCard.prices.market}</span>
-                  )}
+                  {(selCard.prices.market ?? selCard.prices.foil) != null && (() => {
+                    const nm   = selCard.prices.market ?? selCard.prices.foil ?? 0;
+                    const price = Math.round(nm * (COND_MULTIPLIER[condition] ?? 1) * 100) / 100;
+                    return <span className="pill pill-tcg">TCG ${price}</span>;
+                  })()}
                 </div>
               </div>
             </div>
@@ -230,7 +249,8 @@ export default function CardLookup({ onAdd, watchlistCount, maxWatchlist }: Prop
         )}
 
         <button className="btn-add" disabled={!canAdd} onClick={handleAdd}>
-          <i className="ti ti-plus" aria-hidden="true" /> Add to watchlist
+          <i className="ti ti-plus" aria-hidden="true" />
+          {alreadyAdded ? 'Already in watchlist' : 'Add to watchlist'}
         </button>
       </div>
     </div>

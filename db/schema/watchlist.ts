@@ -1,7 +1,9 @@
-import { pgTable, text, real, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, text, real, boolean, timestamp } from 'drizzle-orm/pg-core';
 
 export const watchlistCards = pgTable('watchlist_cards', {
   id:         text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  tcgCardId:  text('tcg_card_id'),          // TCG API numeric card ID — stable join key across watch cycles
+  isActive:   boolean('is_active').notNull().default(true),
   game:       text('game').notNull(),       // 'pokemon' | 'onepiece' | 'sports'
   set:        text('set').notNull(),
   cardNumber: text('card_number').notNull(),

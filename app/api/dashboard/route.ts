@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { desc, eq, sql } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { watchlistCards } from '@/db/schema/watchlist';
 import { scanResults } from '@/db/schema/scan-results';
@@ -9,7 +9,11 @@ export async function GET() {
   try {
     const db = getDb();
 
-    const cards = await db.select().from(watchlistCards).orderBy(watchlistCards.createdAt);
+    const cards = await db
+      .select()
+      .from(watchlistCards)
+      .where(eq(watchlistCards.isActive, true))
+      .orderBy(watchlistCards.createdAt);
 
     if (cards.length === 0) {
       return NextResponse.json({ cards: [], stats: null, trendSeries: [], scatterPoints: [] });
@@ -18,10 +22,13 @@ export async function GET() {
     // Per-card: best margin + deal count from latest scan
     const cardStats = await Promise.all(
       cards.map(async (card) => {
+        const scanWhere = card.tcgCardId
+          ? eq(scanResults.tcgCardId, card.tcgCardId)
+          : eq(scanResults.cardId, card.id);
         const results = await db
           .select()
           .from(scanResults)
-          .where(eq(scanResults.cardId, card.id))
+          .where(scanWhere)
           .orderBy(desc(scanResults.scannedAt));
 
         const deals     = results.filter((r) => r.isDeal);
@@ -32,10 +39,13 @@ export async function GET() {
           : null;
 
         // 30d price history for trend chart
+        const snapWhere = card.tcgCardId
+          ? eq(priceSnapshots.tcgCardId, card.tcgCardId)
+          : eq(priceSnapshots.cardId, card.id);
         const snapshots = await db
           .select()
           .from(priceSnapshots)
-          .where(eq(priceSnapshots.cardId, card.id))
+          .where(snapWhere)
           .orderBy(priceSnapshots.takenAt)
           .limit(30);
 

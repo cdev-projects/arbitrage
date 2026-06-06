@@ -10,10 +10,13 @@ export async function DELETE(
   try {
     const { id } = await params;
     const db = getDb();
-    await db.delete(watchlistCards).where(eq(watchlistCards.id, id));
+    await db
+      .update(watchlistCards)
+      .set({ isActive: false })
+      .where(eq(watchlistCards.id, id));
     return new NextResponse(null, { status: 204 });
   } catch (err) {
     console.error('[watchlist DELETE]', err);
-    return NextResponse.json({ error: 'Failed to delete card' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to remove card' }, { status: 500 });
   }
 }

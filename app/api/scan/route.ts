@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const db = getDb();
-    cards = await db.select().from(watchlistCards);
+    cards = await db.select().from(watchlistCards).where(eq(watchlistCards.isActive, true));
     dbAvailable = true;
   } catch {
     if (clientWatchlist && clientWatchlist.length > 0) {
@@ -164,6 +164,7 @@ export async function POST(req: NextRequest) {
         await db.insert(scanResults).values(
           scoredListings.map((l) => ({
             cardId:      card.id,
+            tcgCardId:   card.tcgCardId ?? null,
             listingId:   l.listingId,
             title:       l.title,
             price:       l.price,
@@ -177,11 +178,13 @@ export async function POST(req: NextRequest) {
           }))
         );
 
-        // Daily price snapshot (upsert by card + date)
+        // Daily price snapshot
         const avgEbay = listings.reduce((s, l) => s + l.price, 0) / listings.length;
         const dealCount = scoredListings.filter((l) => l.isDeal).length;
         await db.insert(priceSnapshots).values({
           cardId:         card.id,
+          tcgCardId:      card.tcgCardId ?? null,
+          condition:      card.condition,
           tcgMarket:      card.tcgMarket,
           avgEbayListing: avgEbay,
           dealCount,

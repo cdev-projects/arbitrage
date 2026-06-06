@@ -1,9 +1,9 @@
 import { pgTable, text, real, integer, boolean, timestamp } from 'drizzle-orm/pg-core';
-import { watchlistCards } from './watchlist';
 
 export const scanResults = pgTable('scan_results', {
   id:          text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  cardId:      text('card_id').notNull().references(() => watchlistCards.id, { onDelete: 'cascade' }),
+  cardId:      text('card_id').notNull(),   // watchlist row UUID — audit trail, no cascade
+  tcgCardId:   text('tcg_card_id'),          // stable join key across watch/unwatch cycles
   listingId:   text('listing_id').notNull(),   // eBay item ID
   title:       text('title').notNull(),
   price:       real('price').notNull(),

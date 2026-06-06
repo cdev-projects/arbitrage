@@ -68,7 +68,10 @@ export default function Watchlist({ cards, onRemove, onScan, scanning, minMargin
               <div className={`wl-art ${artClass(card.game)}`}>{card.art}</div>
               <div className="wl-info">
                 <div className="wl-name">{card.cardName}</div>
-                <div className="wl-sub">{card.cardNumber} · {card.set}</div>
+                <div className="wl-sub">
+                  {card.cardNumber} · {card.set}
+                  {card.tcgMarket > 0 ? ` · $${card.tcgMarket}` : ''}
+                </div>
               </div>
               <span className="pill" style={{ ...gameStyle(card.game), marginRight: 3 }}>
                 {gameTag(card.game)}

@@ -6,16 +6,17 @@ import Watchlist from '@/components/deal-finder/Watchlist';
 import ScanResults from '@/components/deal-finder/ScanResults';
 
 interface WatchlistCard {
-  id:         string;
-  game:       string;
-  set:        string;
-  cardNumber: string;
-  cardName:   string;
-  rarity:     string;
-  condition:  string;
-  tcgMarket:  number;
-  tcgLow:     number;
-  art:        string;
+  id:          string;
+  tcgCardId?:  string | null;
+  game:        string;
+  set:         string;
+  cardNumber:  string;
+  cardName:    string;
+  rarity:      string;
+  condition:   string;
+  tcgMarket:   number;
+  tcgLow:      number;
+  art:         string;
 }
 
 interface ScanResult {
@@ -154,6 +155,7 @@ export default function DealFinderPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', alignItems: 'start' }}>
         <CardLookup
           onAdd={handleAdd}
+          watchlist={watchlist}
           watchlistCount={watchlist.length}
           maxWatchlist={20}
         />

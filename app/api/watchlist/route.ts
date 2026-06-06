@@ -8,7 +8,11 @@ const MAX_WATCHLIST = 20;
 export async function GET() {
   try {
     const db = getDb();
-    const cards = await db.select().from(watchlistCards).orderBy(watchlistCards.createdAt);
+    const cards = await db
+      .select()
+      .from(watchlistCards)
+      .where(eq(watchlistCards.isActive, true))
+      .orderBy(watchlistCards.createdAt);
     return NextResponse.json(cards);
   } catch (err) {
     console.error('[watchlist GET]', err);
@@ -21,20 +25,37 @@ export async function POST(req: NextRequest) {
     const db = getDb();
     const body = await req.json() as NewWatchlistCard;
 
-    const existing = await db.select().from(watchlistCards);
-    if (existing.length >= MAX_WATCHLIST) {
-      return NextResponse.json({ error: 'Watchlist is full (max 20)' }, { status: 400 });
-    }
+    const all = await db.select().from(watchlistCards);
 
-    const duplicate = existing.find(
+    const match = all.find(
       (c) =>
         c.game === body.game &&
         c.set === body.set &&
         c.cardNumber === body.cardNumber &&
         c.condition === body.condition
     );
-    if (duplicate) {
-      return NextResponse.json({ error: 'Card already in watchlist' }, { status: 409 });
+
+    if (match) {
+      if (match.isActive) {
+        return NextResponse.json({ error: 'Card already in watchlist' }, { status: 409 });
+      }
+      // Reactivate the existing row — history stays intact under the same tcgCardId
+      const [reactivated] = await db
+        .update(watchlistCards)
+        .set({
+          isActive:  true,
+          tcgCardId: body.tcgCardId ?? match.tcgCardId,
+          tcgMarket: body.tcgMarket,
+          tcgLow:    body.tcgLow,
+        })
+        .where(eq(watchlistCards.id, match.id))
+        .returning();
+      return NextResponse.json(reactivated, { status: 200 });
+    }
+
+    const active = all.filter((c) => c.isActive);
+    if (active.length >= MAX_WATCHLIST) {
+      return NextResponse.json({ error: 'Watchlist is full (max 20)' }, { status: 400 });
     }
 
     const [created] = await db.insert(watchlistCards).values(body).returning();

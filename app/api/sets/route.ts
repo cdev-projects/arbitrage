@@ -15,11 +15,6 @@ const MOCK_SETS: Record<string, { id: string; name: string; code: string }[]> = 
     { id: 'op05', name: 'OP-05 Awakening',           code: 'OP05' },
     { id: 'op06', name: 'OP-06 Wings of Captain',    code: 'OP06' },
   ],
-  sports: [
-    { id: 'topps-chrome-2003',  name: 'Topps Chrome 2003',   code: 'TC03' },
-    { id: 'panini-prizm-2021',  name: 'Panini Prizm 2021',   code: 'PP21' },
-    { id: 'panini-mosaic-2020', name: 'Panini Mosaic 2020',  code: 'PM20' },
-  ],
 };
 
 export async function GET(req: NextRequest) {
