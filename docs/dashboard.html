@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Card Trading Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.10.0/dist/tabler-icons.min.css">
+<style>
+  :root {
+    --teal: #0F6E56; --teal-mid: #1D9E75; --teal-light: #E1F5EE;
+    --amber: #854F0B; --amber-light: #FAEEDA; --amber-mid: #BA7517;
+    --coral: #993C1D; --coral-light: #FAECE7; --coral-mid: #D85A30;
+    --purple: #534AB7; --purple-light: #EEEDFE; --purple-mid: #7F77DD;
+    --blue-light: #E6F1FB; --blue-mid: #378ADD; --blue-dark: #0C447C;
+    --gray-light: #F1EFE8; --gray-mid: #888780; --gray-dark: #444441;
+    --ink: #1a1a18; --muted: #5a5a56; --border: #e0ddd5;
+    --bg: #faf9f6; --surface: #ffffff; --surface-secondary: #f5f4f0;
+    --radius-md: 8px; --radius-lg: 12px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--ink); font-size: 14px; line-height: 1.6; }
+
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 2rem; display: flex; align-items: center;
+  }
+  .nav-brand { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; color: var(--ink); padding: 1rem 1.5rem 1rem 0; border-right: 1px solid var(--border); margin-right: 1.5rem; white-space: nowrap; }
+  .nav-links { display: flex; }
+  .nav-links a { font-size: 13px; color: var(--muted); text-decoration: none; padding: 1rem 0.875rem; border-bottom: 2px solid transparent; transition: color 0.15s, border-color 0.15s; white-space: nowrap; }
+  .nav-links a:hover { color: var(--ink); }
+  .nav-links a.active { color: var(--teal); border-bottom-color: var(--teal); }
+
+  .page { max-width: 960px; margin: 0 auto; padding: 2.5rem 2rem 5rem; }
+
+  .db-header { padding: 1.5rem 0 1.25rem; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .db-eyebrow { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .db-title { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 300; color: var(--ink); }
+  .db-title em { font-style: italic; color: var(--teal-mid); }
+  .db-updated { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+  .stat-tile { background: var(--surface-secondary); border-radius: var(--radius-md); padding: 1rem; }
+  .stat-tile.hl { background: var(--teal-light); }
+  .stat-ey { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: var(--gray-mid); margin-bottom: 4px; }
+  .stat-tile.hl .stat-ey { color: var(--teal); }
+  .stat-num { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 300; color: var(--ink); line-height: 1; }
+  .stat-tile.hl .stat-num { color: var(--teal); }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .stat-sub.up { color: var(--teal-mid); } .stat-sub.dn { color: var(--coral-mid); }
+
+  .chart-panel { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.25rem; }
+  .section-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: .875rem; flex-wrap: wrap; gap: 8px; }
+  .section-title { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 300; color: var(--ink); }
+  .section-meta { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: .875rem; font-size: 12px; color: var(--muted); }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .legend-dash { width: 18px; height: 2px; border-radius: 0; flex-shrink: 0; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; align-items: start; }
+
+  .tab-bar { display: flex; gap: 4px; flex-wrap: wrap; }
+  .ttab { padding: 4px 10px; font-size: 12px; font-family: 'DM Sans', sans-serif; border-radius: var(--radius-md); border: 0.5px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; }
+  .ttab.on { background: var(--teal-light); color: var(--teal); border-color: var(--teal-mid); }
+
+  .rank-list { display: flex; flex-direction: column; }
+  .rank-row { display: flex; align-items: center; gap: 10px; padding: .625rem 0; border-bottom: 0.5px solid var(--border); }
+  .rank-row:last-child { border-bottom: none; }
+  .rank-num { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); width: 18px; flex-shrink: 0; text-align: right; }
+  .rank-art { width: 28px; height: 38px; border-radius: 3px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-size: 12px; }
+  .art-pokemon { background: var(--amber-light); color: var(--amber-mid); }
+  .art-onepiece { background: var(--coral-light); color: var(--coral-mid); }
+  .art-sports { background: var(--purple-light); color: var(--purple-mid); }
+  .rank-info { flex: 1; min-width: 0; }
+  .rank-name { font-size: 13px; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rank-sub { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--muted); margin-top: 1px; }
+  .rank-val { text-align: right; flex-shrink: 0; }
+  .rank-primary { font-family: 'Fraunces', serif; font-size: 16px; font-weight: 300; }
+  .rank-primary.pos { color: var(--teal); } .rank-primary.neg { color: var(--coral-mid); } .rank-primary.neu { color: var(--ink); }
+  .rank-secondary { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 1px; }
+
+  .trend-bar-wrap { margin-top: 4px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; width: 100%; }
+  .trend-bar { height: 100%; border-radius: 2px; }
+  .bar-up { background: var(--teal-mid); } .bar-dn { background: var(--coral-mid); }
+
+  .pill { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 3px; display: inline-flex; align-items: center; gap: 3px; }
+  .pill-hot { background: var(--coral-light); color: #712B13; }
+  .pill-warm { background: var(--amber-light); color: #633806; }
+  .pill-cold { background: var(--gray-light); color: var(--gray-mid); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">Card Trading Engine</div>
+  <div class="nav-links">
+    <a href="deal-finder.html">Deal finder</a>
+    <a href="dashboard.html" class="active">Dashboard</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="db-header">
+    <div>
+      <div class="db-eyebrow">Watchlist dashboard</div>
+      <div class="db-title">Portfolio <em>overview</em></div>
+    </div>
+    <div class="db-updated"><i class="ti ti-refresh" style="font-size:12px;vertical-align:-1px" aria-hidden="true"></i> Last scanned: today, 9:42 AM</div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-tile"><div class="stat-ey">Cards tracked</div><div class="stat-num">6</div><div class="stat-sub">across 3 games</div></div>
+    <div class="stat-tile hl"><div class="stat-ey">Active deals</div><div class="stat-num">9</div><div class="stat-sub up"><i class="ti ti-arrow-up" style="font-size:11px" aria-hidden="true"></i> 3 new since yesterday</div></div>
+    <div class="stat-tile hl"><div class="stat-ey">Best opportunity</div><div class="stat-num">61%</div><div class="stat-sub">Charizard ex Alt Art</div></div>
+    <div class="stat-tile"><div class="stat-ey">Avg margin (deals)</div><div class="stat-num">44%</div><div class="stat-sub up"><i class="ti ti-arrow-up" style="font-size:11px" aria-hidden="true"></i> +6pts vs last week</div></div>
+  </div>
+
+  <div class="chart-panel">
+    <div class="section-head">
+      <div class="section-title">Market price vs. avg eBay listing — 30 days</div>
+      <div class="tab-bar" id="trend-tabs">
+        <button class="ttab on" onclick="showTrend('charizard-alt', this)">Charizard ex Alt</button>
+        <button class="ttab" onclick="showTrend('luffy', this)">Luffy SEC</button>
+        <button class="ttab" onclick="showTrend('lebron', this)">LeBron RC</button>
+        <button class="ttab" onclick="showTrend('iono', this)">Iono Alt</button>
+      </div>
+    </div>
+    <div class="legend">
+      <span class="legend-item"><span class="legend-dot" style="background:#1D9E75"></span>TCG market price</span>
+      <span class="legend-item"><span class="legend-dash" style="border-top:2px dashed #378ADD"></span>Avg eBay listing</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#E1F5EE;border:0.5px solid #1D9E75"></span>Deal zone (listing &lt; TCG)</span>
+    </div>
+    <div style="position:relative;width:100%;height:220px">
+      <canvas id="trendChart" role="img" aria-label="Line chart showing TCG market price versus average eBay listing price over 30 days"></canvas>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="chart-panel" style="margin-bottom:0">
+      <div class="section-head">
+        <div class="section-title">Opportunity ranking</div>
+        <div class="section-meta">by best deal margin</div>
+      </div>
+      <div class="rank-list" id="opp-rank"></div>
+    </div>
+    <div class="chart-panel" style="margin-bottom:0">
+      <div class="section-head">
+        <div class="section-title">Price momentum</div>
+        <div class="section-meta">TCG market, 30d change</div>
+      </div>
+      <div class="rank-list" id="momentum-rank"></div>
+    </div>
+  </div>
+
+  <div class="chart-panel" style="margin-top:1.25rem">
+    <div class="section-head">
+      <div class="section-title">Listing price vs. TCG market — all cards</div>
+      <div class="section-meta">scatter · each dot = one eBay listing · below diagonal = potential deal</div>
+    </div>
+    <div class="legend">
+      <span class="legend-item"><span class="legend-dot" style="background:#1D9E75"></span>Deal ✓</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#B4B2A9"></span>Pass</span>
+      <span class="legend-item" style="font-size:11px;color:var(--muted)">Dashed line = parity (listing = TCG price)</span>
+    </div>
+    <div style="position:relative;width:100%;height:260px">
+      <canvas id="scatterChart" role="img" aria-label="Scatter plot comparing eBay listing price to TCG market price. Points below the diagonal line are deals.">Points below the diagonal line represent listings priced below TCG market value.</canvas>
+    </div>
+  </div>
+
+  <div class="chart-panel" style="margin-top:1.25rem">
+    <div class="section-head">
+      <div class="section-title">Deal count by card</div>
+      <div class="section-meta">listings clearing 30% margin threshold</div>
+    </div>
+    <div style="position:relative;width:100%;height:220px">
+      <canvas id="barChart" role="img" aria-label="Bar chart showing number of deals found per watched card">Number of eBay listings clearing the 30% margin threshold for each watched card.</canvas>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const DAYS = 30;
+const days = Array.from({length:DAYS}, (_,i) => {
+  const d = new Date(); d.setDate(d.getDate()-DAYS+i+1);
+  return d.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+});
+
+const TREND_DATA = {
+  'charizard-alt': {
+    tcg: [268,270,272,269,275,278,280,277,282,285,283,287,290,288,285,282,278,280,284,286,285,283,285,287,285,284,285,285,283,285],
+    ebay:[310,305,298,295,300,292,285,288,280,275,278,270,265,268,272,278,274,270,268,265,260,258,262,265,260,255,252,250,248,245]
+  },
+  'luffy': {
+    tcg: [105,107,108,110,112,115,118,116,119,120,118,121,123,122,120,118,116,118,120,121,120,119,120,121,120,119,120,120,119,120],
+    ebay:[135,130,128,125,122,118,115,118,112,108,110,105,102,108,110,112,108,104,100,98,102,105,108,112,110,108,105,102,100,98]
+  },
+  'lebron': {
+    tcg: [420,425,428,432,435,438,440,442,445,448,450,448,452,455,453,450,448,450,452,450,450,449,450,451,450,450,449,450,450,450],
+    ebay:[480,475,468,462,455,450,445,440,438,435,430,428,425,422,420,418,415,418,420,418,415,412,410,408,405,402,400,398,396,395]
+  },
+  'iono': {
+    tcg: [180,182,184,185,186,188,190,192,194,195,193,196,198,197,195,193,191,193,195,196,195,194,195,196,195,194,195,195,194,195],
+    ebay:[220,215,210,205,200,196,192,188,186,182,185,180,178,180,182,185,180,175,172,170,168,172,175,178,175,170,168,165,162,160]
+  }
+};
+
+const CARDS = [
+  {name:'Charizard ex Alt Art', short:'Char ex Alt', game:'pokemon', art:'火', tcg:285, bestMargin:61, dealCount:4, momentum:6.3, trend:'up'},
+  {name:'LeBron James RC',      short:'LeBron RC',  game:'sports',  art:'🏀', tcg:450, bestMargin:52, dealCount:3, momentum:2.2, trend:'up'},
+  {name:'Charizard',            short:'Charizard',  game:'pokemon', art:'火', tcg:290, bestMargin:48, dealCount:2, momentum:-1.4,trend:'dn'},
+  {name:'Monkey D. Luffy (SEC)',short:'Luffy SEC',  game:'onepiece',art:'⚓', tcg:120, bestMargin:45, dealCount:3, momentum:4.1, trend:'up'},
+  {name:'Iono (Alt Art)',        short:'Iono Alt',   game:'pokemon', art:'📱', tcg:195, bestMargin:38, dealCount:4, momentum:3.8, trend:'up'},
+  {name:'Flygon (Holo)',         short:'Flygon',     game:'pokemon', art:'🐉', tcg:47,  bestMargin:0,  dealCount:0, momentum:-8.5,trend:'dn'},
+];
+
+function momentumPill(c) {
+  if(c.trend==='up' && c.momentum>5) return '<span class="pill pill-hot"><i class="ti ti-flame" style="font-size:10px" aria-hidden="true"></i> Hot</span>';
+  if(c.trend==='up') return '<span class="pill pill-warm"><i class="ti ti-arrow-up" style="font-size:10px" aria-hidden="true"></i> Rising</span>';
+  return '<span class="pill pill-cold"><i class="ti ti-arrow-down" style="font-size:10px" aria-hidden="true"></i> Cooling</span>';
+}
+
+function renderOppRank() {
+  const sorted = [...CARDS].sort((a,b) => b.bestMargin - a.bestMargin);
+  document.getElementById('opp-rank').innerHTML = sorted.map((c,i) => `
+    <div class="rank-row">
+      <span class="rank-num">${i+1}</span>
+      <div class="rank-art art-${c.game}">${c.art}</div>
+      <div class="rank-info">
+        <div class="rank-name">${c.short}</div>
+        <div class="rank-sub">TCG $${c.tcg} · ${c.dealCount} deal${c.dealCount!==1?'s':''}</div>
+      </div>
+      <div class="rank-val">
+        <div class="rank-primary ${c.bestMargin>0?'pos':'neu'}">${c.bestMargin>0?c.bestMargin+'%':'—'}</div>
+        <div class="rank-secondary">best margin</div>
+      </div>
+    </div>`).join('');
+}
+
+function renderMomentum() {
+  const sorted = [...CARDS].sort((a,b) => b.momentum - a.momentum);
+  const max = Math.max(...CARDS.map(c => Math.abs(c.momentum)));
+  document.getElementById('momentum-rank').innerHTML = sorted.map((c,i) => `
+    <div class="rank-row">
+      <span class="rank-num">${i+1}</span>
+      <div class="rank-art art-${c.game}">${c.art}</div>
+      <div class="rank-info">
+        <div class="rank-name">${c.short}</div>
+        <div class="trend-bar-wrap"><div class="trend-bar ${c.trend==='up'?'bar-up':'bar-dn'}" style="width:${Math.round(Math.abs(c.momentum)/max*100)}%"></div></div>
+      </div>
+      <div class="rank-val">
+        <div class="rank-primary ${c.trend==='up'?'pos':'neg'}">${c.momentum>0?'+':''}${c.momentum.toFixed(1)}%</div>
+        <div class="rank-secondary">30d change</div>
+        <div style="margin-top:3px">${momentumPill(c)}</div>
+      </div>
+    </div>`).join('');
+}
+
+let trendChart = null;
+function showTrend(key, btn) {
+  document.querySelectorAll('.ttab').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  const d = TREND_DATA[key];
+  if(trendChart) {
+    trendChart.data.datasets[0].data = d.tcg;
+    trendChart.data.datasets[1].data = d.ebay;
+    trendChart.update();
+  }
+}
+
+function buildTrendChart() {
+  const d = TREND_DATA['charizard-alt'];
+  trendChart = new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: {
+      labels: days,
+      datasets: [
+        {label:'TCG market', data:d.tcg, borderColor:'#1D9E75', borderWidth:2, pointRadius:0, pointHoverRadius:4, tension:.35, fill:{target:'1', above:'rgba(225,245,238,0.4)', below:'rgba(225,245,238,0)'}},
+        {label:'Avg eBay listing', data:d.ebay, borderColor:'#378ADD', borderWidth:1.5, borderDash:[4,3], pointRadius:0, pointHoverRadius:4, tension:.35, fill:false},
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index', intersect:false},
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>' $'+ctx.parsed.y.toFixed(0)}}},
+      scales:{
+        x:{ticks:{maxRotation:0, autoSkip:true, maxTicksLimit:7, font:{size:11}, color:'#888780'}, grid:{display:false}},
+        y:{ticks:{callback:v=>'$'+v, font:{size:11}, color:'#888780'}, grid:{color:'rgba(136,135,128,0.12)'}, border:{dash:[3,3]}}
+      }
+    }
+  });
+}
+
+function buildScatterChart() {
+  const EBAY_FEE=0.1325, PAY=0.03;
+  function ship(p){return p>=100?8:p>=40?5.5:3;}
+  function isDeal(price,tcg){const s=tcg*0.85,pr=s-s*EBAY_FEE-s*PAY-ship(price)-price;return(pr/s)*100>=30;}
+  const RAW=[
+    {name:'Char ex Alt',tcg:285,listings:[89.99,145,62,105,79]},
+    {name:'Charizard',tcg:290,listings:[185,130,220]},
+    {name:'Luffy SEC',tcg:120,listings:[38,55,110,29,44]},
+    {name:'LeBron RC',tcg:450,listings:[185,120,210,165]},
+    {name:'Iono Alt',tcg:195,listings:[58,72,44,65]},
+    {name:'Flygon',tcg:47,listings:[32,38,29,42]},
+  ];
+  const dealPts=[], passPts=[];
+  RAW.forEach(c => {
+    c.listings.forEach(p => {
+      const pt = {x:Math.round(c.tcg), y:Math.round(p)};
+      isDeal(p,c.tcg) ? dealPts.push(pt) : passPts.push(pt);
+    });
+  });
+  const allVals = [...RAW.map(c=>c.tcg), ...RAW.flatMap(c=>c.listings)];
+  const mn = Math.min(...allVals)*0.85, mx = Math.max(...allVals)*1.1;
+  new Chart(document.getElementById('scatterChart'), {
+    type:'scatter',
+    data:{datasets:[
+      {label:'Deal', data:dealPts, backgroundColor:'rgba(29,158,117,0.7)', pointRadius:6, pointStyle:'circle'},
+      {label:'Pass', data:passPts, backgroundColor:'rgba(180,178,169,0.5)', pointRadius:5, pointStyle:'circle'},
+      {label:'Parity', data:[{x:mn,y:mn},{x:mx,y:mx}], type:'line', borderColor:'rgba(136,135,128,0.4)', borderWidth:1, borderDash:[5,4], pointRadius:0, fill:false},
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>ctx.dataset.label==='Parity'?null:` Listed $${ctx.parsed.y} · TCG $${ctx.parsed.x}`}}},
+      scales:{
+        x:{title:{display:true, text:'TCG market price ($)', font:{size:11}, color:'#888780'}, ticks:{callback:v=>'$'+v, font:{size:11}, color:'#888780'}, min:Math.round(mn), max:Math.round(mx), grid:{color:'rgba(136,135,128,0.1)'}},
+        y:{title:{display:true, text:'eBay listing price ($)', font:{size:11}, color:'#888780'}, ticks:{callback:v=>'$'+v, font:{size:11}, color:'#888780'}, min:Math.round(mn), max:Math.round(mx), grid:{color:'rgba(136,135,128,0.1)'}}
+      }
+    }
+  });
+}
+
+function buildBarChart() {
+  const labels = CARDS.map(c => c.short);
+  const data = CARDS.map(c => c.dealCount);
+  const colors = CARDS.map(c => c.dealCount>0 ? 'rgba(29,158,117,0.75)' : 'rgba(180,178,169,0.5)');
+  new Chart(document.getElementById('barChart'), {
+    type:'bar',
+    data:{labels, datasets:[{label:'Deals', data, backgroundColor:colors, borderRadius:4, borderSkipped:false}]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>` ${ctx.parsed.y} deal${ctx.parsed.y!==1?'s':''}`}}},
+      scales:{
+        x:{ticks:{font:{size:11}, color:'#888780'}, grid:{display:false}},
+        y:{ticks:{stepSize:1, font:{size:11}, color:'#888780'}, grid:{color:'rgba(136,135,128,0.1)'}, border:{dash:[3,3]}, min:0}
+      }
+    }
+  });
+}
+
+renderOppRank();
+renderMomentum();
+buildTrendChart();
+buildScatterChart();
+buildBarChart();
+</script>
+</body>
+</html>

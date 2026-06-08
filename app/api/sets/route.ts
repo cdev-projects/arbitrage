@@ -11,9 +11,15 @@ const MOCK_SETS: Record<string, { id: string; name: string; code: string }[]> = 
     { id: 'ex4',         name: 'EX Dragon',              code: 'ex4' },
   ],
   onepiece: [
-    { id: 'op01', name: 'OP-01 Romance Dawn',        code: 'OP01' },
-    { id: 'op05', name: 'OP-05 Awakening',           code: 'OP05' },
-    { id: 'op06', name: 'OP-06 Wings of Captain',    code: 'OP06' },
+    { id: 'op09', name: 'OP-09 The Four Emperors',    code: 'OP09' },
+    { id: 'op08', name: 'OP-08 Two Legends',          code: 'OP08' },
+    { id: 'op07', name: 'OP-07 500 Years in the Future', code: 'OP07' },
+    { id: 'op06', name: 'OP-06 Wings of the Captain', code: 'OP06' },
+    { id: 'op05', name: 'OP-05 Awakening of the New Era', code: 'OP05' },
+    { id: 'op04', name: 'OP-04 Kingdoms of Intrigue', code: 'OP04' },
+    { id: 'op03', name: 'OP-03 Pillars of Strength',  code: 'OP03' },
+    { id: 'op02', name: 'OP-02 Paramount War',        code: 'OP02' },
+    { id: 'op01', name: 'OP-01 Romance Dawn',         code: 'OP01' },
   ],
 };
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { searchCards } from '@/lib/tcg';
+import { searchCards, getSetCards } from '@/lib/tcg';
 
 interface MockCard {
   id: string;
@@ -50,24 +50,36 @@ const MOCK_CARDS: Record<string, Record<string, MockCard[]>> = {
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const game  = searchParams.get('game');
-  const q     = searchParams.get('q');
+  const q     = searchParams.get('q') ?? '';
   const setId = searchParams.get('set') ?? undefined;
+  const page  = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10));
 
-  if (!game || !q || q.trim().length < 2) {
-    return NextResponse.json({ error: 'game and q (min 2 chars) required' }, { status: 400 });
+  const hasQuery = q.trim().length >= 2;
+  const hasSet   = !!setId;
+
+  if (!game || (!hasQuery && !hasSet)) {
+    return NextResponse.json({ error: 'game and either q (min 2 chars) or set required' }, { status: 400 });
   }
 
   if (!process.env.TCG_API_KEY) {
+    const allForGame = MOCK_CARDS[game] ?? {};
+    if (hasSet && !hasQuery) {
+      const cards = allForGame[setId!] ?? [];
+      return NextResponse.json({ cards, hasMore: false, nextPage: null, total: cards.length });
+    }
     const ql = q.toLowerCase();
-    const cards = Object.entries(MOCK_CARDS[game] ?? {})
+    const cards = Object.entries(allForGame)
       .flatMap(([sid, list]) => (!setId || sid === setId) ? list : [])
       .filter((c) => c.name.toLowerCase().includes(ql));
-    return NextResponse.json(cards);
+    return NextResponse.json({ cards, hasMore: false, nextPage: null, total: cards.length });
   }
 
   try {
+    if (hasSet && !hasQuery) {
+      return NextResponse.json(await getSetCards(setId!, page));
+    }
     const cards = await searchCards(game, q, setId);
-    return NextResponse.json(cards);
+    return NextResponse.json({ cards, hasMore: false, nextPage: null, total: cards.length });
   } catch (err) {
     console.error('[cards GET]', err);
     return NextResponse.json({ error: 'Card search failed' }, { status: 500 });

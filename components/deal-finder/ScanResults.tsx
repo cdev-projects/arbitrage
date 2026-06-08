@@ -29,6 +29,7 @@ interface CardResult {
   condition:  string;
   game:       string;
   art:        string;
+  imageUrl?:  string | null;
   listings:   Listing[];
 }
 
@@ -144,7 +145,10 @@ export default function ScanResults({ results, minMargin }: Props) {
                 className={`cg-toggle ${isOpen ? 'open' : ''}`}
                 onClick={() => toggleGroup(card.cardId)}
               >
-                <span className="cg-art">{card.art}</span>
+                {card.imageUrl
+                  ? <img src={card.imageUrl} alt={card.cardName} className="cg-art cg-art-img" />
+                  : <span className="cg-art">{card.art}</span>
+                }
                 <span className="cg-info">
                   <span className="cg-name">{card.cardName}</span>
                   <span className="cg-meta">
@@ -166,7 +170,7 @@ export default function ScanResults({ results, minMargin }: Props) {
                 <div className="cg-body open">
                   <div className="rlist">
                     {shown.map((l) => (
-                      <ResultCard key={l.listingId} listing={l} game={card.game} art={card.art} />
+                      <ResultCard key={l.listingId} listing={l} game={card.game} art={card.art} imageUrl={card.imageUrl} />
                     ))}
                   </div>
                 </div>

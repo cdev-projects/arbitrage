@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TCG API — Endpoint Reference</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --teal: #0F6E56; --teal-light: #E1F5EE; --teal-mid: #1D9E75;
+  --purple: #534AB7; --purple-light: #EEEDFE; --purple-mid: #7F77DD;
+  --amber: #854F0B; --amber-light: #FAEEDA; --amber-mid: #BA7517;
+  --coral: #993C1D; --coral-light: #FAECE7; --coral-mid: #D85A30;
+  --gray: #5F5E5A; --gray-light: #F1EFE8; --gray-mid: #888780;
+  --green: #3B6D11; --green-light: #EAF3DE; --green-mid: #639922;
+  --ink: #1a1a18; --muted: #5a5a56; --border: #e0ddd5;
+  --bg: #faf9f6; --surface: #ffffff;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1.65; }
+p { color: var(--muted); margin-bottom: 1rem; }
+p strong { color: var(--ink); font-weight: 500; }
+.page { max-width: 900px; margin: 0 auto; padding: 3rem 2rem 6rem; }
+section { margin-bottom: 5rem; scroll-margin-top: 4rem; }
+h1 { font-family: 'Fraunces', serif; font-size: 38px; font-weight: 300; line-height: 1.2; color: var(--ink); margin-bottom: 1.25rem; }
+h2 { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 300; line-height: 1.25; color: var(--ink); margin-bottom: 1rem; }
+h3 { font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.75rem; }
+.section-tag { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
+code { font-family: 'DM Mono', monospace; font-size: 13px; background: var(--gray-light); padding: 2px 6px; border-radius: 3px; }
+
+nav { position: sticky; top: 0; z-index: 100; background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 2rem; display: flex; align-items: center; gap: 0; }
+.nav-brand { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; color: var(--ink); padding: 1rem 1.5rem 1rem 0; border-right: 1px solid var(--border); margin-right: 1.5rem; white-space: nowrap; }
+.nav-links { display: flex; gap: 0; flex-wrap: wrap; }
+.nav-links a { font-size: 13px; color: var(--muted); text-decoration: none; padding: 1rem 0.875rem; border-bottom: 2px solid transparent; transition: color 0.15s, border-color 0.15s; white-space: nowrap; }
+.nav-links a:hover { color: var(--ink); }
+.nav-links a.active { color: var(--teal); border-bottom-color: var(--teal); }
+
+.hero { padding: 3rem 0 2rem; border-bottom: 1px solid var(--border); margin-bottom: 4rem; }
+.hero-meta { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 1.5rem; }
+.hero-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; padding: 5px 10px; border-radius: 4px; border: 1px solid var(--border); color: var(--muted); }
+.dot { width: 7px; height: 7px; border-radius: 50%; }
+.dot-teal { background: var(--teal-mid); }
+.dot-purple { background: var(--purple-mid); }
+.dot-amber { background: var(--amber-mid); }
+.dot-coral { background: var(--coral-mid); }
+.dot-green { background: var(--green-mid); }
+
+.highlight-box { background: var(--teal-light); border: 1px solid var(--teal-mid); border-left: 3px solid var(--teal); border-radius: 0 8px 8px 0; padding: 1.25rem 1.5rem; margin: 1.5rem 0; }
+.highlight-box p { color: var(--teal); margin: 0; font-size: 14px; line-height: 1.6; }
+.highlight-box p strong { color: var(--teal); }
+.highlight-box.amber { background: var(--amber-light); border-color: var(--amber-mid); border-left-color: var(--amber); }
+.highlight-box.amber p { color: var(--amber); }
+.highlight-box.amber p strong { color: var(--amber); }
+
+.data-table { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 1.5rem 0; }
+.data-row { display: flex; gap: 1px; background: var(--border); }
+.data-row + .data-row { margin-top: 1px; }
+.data-row.header { background: var(--gray-light); }
+.data-cell { background: var(--surface); padding: 0.875rem 1.25rem; font-size: 13px; color: var(--muted); flex: 1; }
+.data-row.header .data-cell { background: var(--gray-light); font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.data-cell:first-child { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: var(--ink); flex: 0 0 230px; }
+.data-row.header .data-cell:first-child { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); flex: 0 0 230px; }
+
+.workflow { display: flex; flex-direction: column; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 1.5rem 0; }
+.step { background: var(--surface); padding: 1.5rem 2rem; display: flex; gap: 1.25rem; align-items: flex-start; }
+.step-num { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+.step-num.teal { background: var(--teal-light); color: var(--teal); }
+.step-num.purple { background: var(--purple-light); color: var(--purple); }
+.step-num.amber { background: var(--amber-light); color: var(--amber); }
+.step-num.coral { background: var(--coral-light); color: var(--coral); }
+.step-num.green { background: var(--green-light); color: var(--green); }
+.step-body { flex: 1; }
+.step-title { font-size: 15px; font-weight: 500; color: var(--ink); margin-bottom: 0.35rem; font-family: 'DM Mono', monospace; }
+.step-desc { font-size: 13.5px; color: var(--muted); line-height: 1.6; margin-bottom: 0.75rem; }
+.tool-badge { display: inline-block; font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 3px; margin-right: 6px; margin-top: 2px; }
+.badge-teal { background: var(--teal-light); color: var(--teal); }
+.badge-purple { background: var(--purple-light); color: var(--purple); }
+.badge-amber { background: var(--amber-light); color: var(--amber); }
+.badge-coral { background: var(--coral-light); color: var(--coral); }
+.badge-green { background: var(--green-light); color: var(--green); }
+.badge-gray { background: var(--gray-light); color: var(--gray); }
+
+.principles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 1.5rem 0; }
+.principle { background: var(--surface); padding: 1.5rem; }
+.principle-num { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); margin-bottom: 0.5rem; }
+.principle-title { font-size: 14px; font-weight: 500; color: var(--ink); margin-bottom: 0.35rem; font-family: 'DM Mono', monospace; }
+.principle-desc { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+
+.comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 1.5rem 0; }
+.comp-col { background: var(--surface); padding: 1.5rem; }
+.comp-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+.comp-col.before .comp-label { color: var(--muted); }
+.comp-col.after .comp-label { color: var(--teal); border-color: var(--teal-mid); }
+.comp-item { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--muted); padding: 6px 0; border-bottom: 1px solid var(--border); line-height: 1.5; }
+.comp-item:last-child { border-bottom: none; }
+.comp-dot { width: 5px; height: 5px; border-radius: 50%; margin-top: 7px; flex-shrink: 0; }
+.before .comp-dot { background: var(--gray-mid); }
+.after .comp-dot { background: var(--teal-mid); }
+
+footer { border-top: 1px solid var(--border); padding-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
+footer p { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); margin: 0; }
+.footer-tag { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 3px; background: var(--gray-light); color: var(--gray); }
+
+@media (max-width: 600px) {
+  body { font-size: 14px; }
+  .comparison { grid-template-columns: 1fr; }
+  .data-cell:first-child { flex: 0 0 140px; }
+  footer { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-brand">TCG API Reference</div>
+  <div class="nav-links">
+    <a href="#overview" class="active">Overview</a>
+    <a href="#auth">Auth & Caching</a>
+    <a href="#endpoints">Endpoints</a>
+    <a href="#response">Response Shape</a>
+    <a href="#integration">Integration Notes</a>
+  </div>
+</nav>
+
+<div class="page">
+
+  <section class="hero" id="overview">
+    <div class="section-tag">Reference doc · api.tcgapi.dev/v1</div>
+    <h1>TCG API endpoint reference</h1>
+    <p>A working summary of the endpoints the Card Trading Engine uses to look up sets, cards, and market prices. Compiled from the official docs at <code>tcgapi.dev/docs</code> after the original scaffold's guessed endpoint shapes turned out not to match the live API.</p>
+    <div class="hero-meta">
+      <span class="hero-badge"><span class="dot dot-teal"></span>Free tier: 100 req/day</span>
+      <span class="hero-badge"><span class="dot dot-purple"></span>Auth: X-API-Key header</span>
+      <span class="hero-badge"><span class="dot dot-amber"></span>Responses cached 24h</span>
+      <span class="hero-badge"><span class="dot dot-coral"></span>89+ games supported</span>
+    </div>
+  </section>
+
+  <section id="auth">
+    <div class="section-tag">Setup</div>
+    <h2>Authentication & request basics</h2>
+    <p>Every request requires an API key passed as a header — not a query parameter. All list responses share the same envelope shape.</p>
+    <div class="data-table">
+      <div class="data-row header">
+        <div class="data-cell">Detail</div>
+        <div class="data-cell">Value</div>
+      </div>
+      <div class="data-row">
+        <div class="data-cell">Base URL</div>
+        <div class="data-cell"><code>https://api.tcgapi.dev/v1</code></div>
+      </div>
+      <div class="data-row">
+        <div class="data-cell">Auth header</div>
+        <div class="data-cell"><code>X-API-Key: YOUR_KEY</code></div>
+      </div>
+      <div class="data-row">
+        <div class="data-cell">Free tier limit</div>
+        <div class="data-cell">100 requests/day — resets daily (see <code>rate_limit</code> in every response)</div>
+      </div>
+      <div class="data-row">
+        <div class="data-cell">Pagination params</div>
+        <div class="data-cell"><code>page</code> (default 1), <code>per_page</code> (default 50, max 100)</div>
+      </div>
+      <div class="data-row">
+        <div class="data-cell">Game slugs we use</div>
+        <div class="data-cell"><code>pokemon</code>, <code>one-piece</code> — Sports Cards dropped (not supported by this API)</div>
+      </div>
+    </div>
+    <div class="highlight-box amber">
+      <p><strong>Correction from the original scaffold:</strong> the auth header is <code>X-API-Key</code>, not <code>x-api-key</code> in a query string, and there's no <code>/sports</code> game — those were unverified guesses written before the live API was tested.</p>
+    </div>
+  </section>
+
+  <section id="endpoints">
+    <div class="section-tag">API surface</div>
+    <h2>Endpoints we rely on</h2>
+    <p>The five endpoint groups relevant to the Deal Finder's card lookup, watchlist pricing, and dashboard trend features.</p>
+
+    <h3 style="margin-top: 2rem;">Sets</h3>
+    <div class="workflow">
+      <div class="step">
+        <div class="step-num teal">01</div>
+        <div class="step-body">
+          <div class="step-title">GET /sets?game=&page=&per_page=</div>
+          <div class="step-desc">List sets for a game. Returns <code>id, name, slug, abbreviation, release_date, card_count, game_name</code>. Sort client-side by <code>release_date</code> — the API returns them unordered.</div>
+          <span class="tool-badge badge-teal">List Sets</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num teal">02</div>
+        <div class="step-body">
+          <div class="step-title">GET /sets/:id</div>
+          <div class="step-desc">Single set by internal numeric ID — same fields as the list endpoint plus <code>last_synced_at</code>.</div>
+          <span class="tool-badge badge-teal">Get Set</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num teal">03</div>
+        <div class="step-body">
+          <div class="step-title">GET /sets/:id/cards?page=&per_page=</div>
+          <div class="step-desc">The official "cards in a set" endpoint — paginated, no free-text query. This is what powers the card lookup dropdown (the scaffold's original <code>/cards?game=&set=&q=</code> endpoint doesn't exist).</div>
+          <span class="tool-badge badge-teal">Cards in Set</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num amber">04</div>
+        <div class="step-body">
+          <div class="step-title">GET /sets/:id/prices <span class="tool-badge badge-amber" style="margin-left:6px;">Pro tier</span></div>
+          <div class="step-desc">Bulk prices for every card in a set — useful for set-value tracking. Not used in Phase 1, but worth knowing about for future watchlist features.</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="margin-top: 2.5rem;">Cards</h3>
+    <div class="workflow">
+      <div class="step">
+        <div class="step-num purple">05</div>
+        <div class="step-body">
+          <div class="step-title">GET /cards/:id</div>
+          <div class="step-desc">Card metadata by internal ID — name, number, rarity, image, <code>tcgplayer_id</code>, and <code>custom_attributes</code> (Pokémon: stage, HP, energy type, attacks, etc).</div>
+          <span class="tool-badge badge-purple">Card Detail</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num purple">06</div>
+        <div class="step-body">
+          <div class="step-title">GET /cards/tcgplayer/:tcgplayerId</div>
+          <div class="step-desc">Look up a card by its TCGPlayer product ID. Returns the card plus a full <code>prices[]</code> array — one entry per printing (Normal, Foil, etc).</div>
+          <span class="tool-badge badge-purple">By TCGPlayer ID</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num purple">07</div>
+        <div class="step-body">
+          <div class="step-title">GET /cards/:id/prices?printing=</div>
+          <div class="step-desc">The authoritative price lookup for a known card. Returns <code>market_price, low_price, median_price, lowest_with_shipping, buylist_price</code>, plus 24h/7d/30d % change. This is what feeds the deal algorithm's <code>tcgMarket</code> input.</div>
+          <span class="tool-badge badge-purple">Card Prices</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num amber">08</div>
+        <div class="step-body">
+          <div class="step-title">GET /cards/:id/history <span class="tool-badge badge-amber" style="margin-left:6px;">Pro</span> &nbsp;/&nbsp; /history/detailed <span class="tool-badge badge-amber">Business</span></div>
+          <div class="step-desc">Weekly price history (from March 2025) with <code>market_price, avg_sales_price, sales_volume</code> per date — would power richer trend charts than what we can build from our own scan snapshots alone.</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="margin-top: 2.5rem;">Search & Prices</h3>
+    <div class="workflow">
+      <div class="step">
+        <div class="step-num green">09</div>
+        <div class="step-body">
+          <div class="step-title">GET /search?q=&game=&set_id=&rarity=&min_price=&max_price=&sort=</div>
+          <div class="step-desc">The <strong>real</strong> full-text search endpoint (<code>q</code> requires 2+ characters). Returns cards with pricing embedded inline in one call — closer to the original "type to search" UX than the dropdown-only approach. Sort options: <code>relevance, price_asc, price_desc, name</code>.</div>
+          <span class="tool-badge badge-green">Full-text Search</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num green">10</div>
+        <div class="step-body">
+          <div class="step-title">GET /prices/top-movers?game=&direction=&period=&limit=</div>
+          <div class="step-desc">Cards with the biggest price swings (24h/7d/30d, up or down). Could power a "market movers" widget on the dashboard beyond what scan-result trends alone show.</div>
+          <span class="tool-badge badge-green">Top Movers</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="response">
+    <div class="section-tag">Data shapes</div>
+    <h2>Response envelope & key fields</h2>
+    <p>Every list endpoint wraps results the same way — this is the part the original scaffold got wrong (it expected <code>{ sets: [...] }</code> / <code>{ cards: [...] }</code> instead of a generic <code>data</code> array).</p>
+
+    <div class="comparison">
+      <div class="comp-col before">
+        <div class="comp-label">Scaffold assumed</div>
+        <div class="comp-item"><span class="comp-dot"></span><code>{ "sets": [...] }</code></div>
+        <div class="comp-item"><span class="comp-dot"></span><code>{ "cards": [...] }</code></div>
+        <div class="comp-item"><span class="comp-dot"></span><code>{ "prices": {...} }</code></div>
+        <div class="comp-item"><span class="comp-dot"></span>Auth via <code>x-api-key</code> (lowercase, loosely placed)</div>
+        <div class="comp-item"><span class="comp-dot"></span>Free-text search at <code>/cards?q=</code></div>
+      </div>
+      <div class="comp-col after">
+        <div class="comp-label">Actual API</div>
+        <div class="comp-item"><span class="comp-dot"></span><code>{ "data": [...], "meta": {...}, "rate_limit": {...} }</code></div>
+        <div class="comp-item"><span class="comp-dot"></span>Same <code>data</code> envelope on every list endpoint</div>
+        <div class="comp-item"><span class="comp-dot"></span>Per-printing <code>prices[]</code> array on card-detail responses</div>
+        <div class="comp-item"><span class="comp-dot"></span>Auth via <code>X-API-Key</code> header (capitalized, required)</div>
+        <div class="comp-item"><span class="comp-dot"></span>Free-text search lives at <code>/search?q=</code> instead</div>
+      </div>
+    </div>
+
+    <h3 style="margin-top: 2rem;">Core fields by entity</h3>
+    <div class="data-table">
+      <div class="data-row header">
+        <div class="data-cell">Entity</div>
+        <div class="data-cell">Key fields</div>
+      </div>
+      <div class="data-row">
+        <div class="data-cell">Set</div>
+        <div class="data-cell">id, name, slug, abbreviation, release_date, card_count, game_name, game_slug</div>
+      </div>
+      <div class="data-row">
+        <div class="data-cell">Card</div>
+        <div class="data-cell">id, name, clean_name, number, rarity, image_url, tcgplayer_id, product_type, foil_only, custom_attributes, set_name, game_name</div>
+      </div>
+      <div class="data-row">
+        <div class="data-cell">Price (per printing)</div>
+        <div class="data-cell">printing, market_price, low_price, median_price, lowest_with_shipping, buylist_price, price_change_24h/7d/30d, last_updated_at</div>
+      </div>
+      <div class="data-row">
+        <div class="data-cell">Printing variants (Pokémon)</div>
+        <div class="data-cell">Normal, Holofoil, Reverse Holofoil, 1st Edition, Unlimited</div>
+      </div>
+    </div>
+
+    <div class="highlight-box">
+      <p><strong>Sealed products</strong> (booster boxes, tins, ETBs, cases) are returned through the same endpoints — identified by <code>product_type: "Sealed Products"</code> and <code>condition: "Unopened"</code> on listings. Filter with <code>type=Sealed+Products</code> on search/set endpoints if the watchlist ever expands beyond singles.</p>
+    </div>
+  </section>
+
+  <section id="integration">
+    <div class="section-tag">Applied to this project</div>
+    <h2>How this maps onto the Card Trading Engine</h2>
+    <p>What changed in <code>lib/tcg.ts</code> once the real endpoint shapes were confirmed against the live API.</p>
+
+    <div class="principles">
+      <div class="principle">
+        <div class="principle-num">01</div>
+        <div class="principle-title">getSets()</div>
+        <div class="principle-desc">Now hits <code>/sets?game=</code>, unwraps <code>data[]</code>, maps <code>slug → code</code>, and sorts client-side by <code>release_date</code> (newest first) since the API returns sets unordered.</div>
+      </div>
+      <div class="principle">
+        <div class="principle-num">02</div>
+        <div class="principle-title">getCardsInSet()</div>
+        <div class="principle-desc">Switched from the non-existent <code>/cards?game=&set=&q=</code> to <code>/sets/:id/cards</code>, merging multiple printing rows per card into one entry with <code>market</code>/<code>foil</code> prices split out.</div>
+      </div>
+      <div class="principle">
+        <div class="principle-num">03</div>
+        <div class="principle-title">searchCards()</div>
+        <div class="principle-desc">New helper that calls the real <code>/search?q=&game=&set_id=</code> endpoint — available if we want to bring back live free-text search instead of (or alongside) the set-scoped dropdown.</div>
+      </div>
+      <div class="principle">
+        <div class="principle-num">04</div>
+        <div class="principle-title">getCardPrice()</div>
+        <div class="principle-desc">Now calls <code>/cards/:id/prices</code> directly — the authoritative per-card price source — and prefers the <code>Normal</code> printing as the deal algorithm's <code>tcgMarket</code> baseline.</div>
+      </div>
+      <div class="principle">
+        <div class="principle-num">05</div>
+        <div class="principle-title">Auth header fix</div>
+        <div class="principle-desc">Changed from <code>x-api-key</code> to the documented <code>X-API-Key</code> — likely the actual root cause of "queries return no data" before any shape mismatches even mattered.</div>
+      </div>
+      <div class="principle">
+        <div class="principle-num">06</div>
+        <div class="principle-title">Sports Cards removed</div>
+        <div class="principle-desc">Dropped from <code>GAMES</code>, <code>GAME_MAP</code>, and mock data — TCG API has no sports card coverage, so the category was undeliverable as scoped.</div>
+      </div>
+    </div>
+
+    <div class="highlight-box amber">
+      <p><strong>Still to verify:</strong> the exact field names returned by <code>/sets/:id/cards</code> and <code>/search</code> for card pricing (<code>market_price</code> vs. nested <code>prices[]</code>) — the current mapping in <code>lib/tcg.ts</code> handles both shapes defensively, but should be confirmed against a live response and tightened once you've run a real lookup.</p>
+    </div>
+  </section>
+
+  <footer>
+    <p>Card Trading Engine — TCG API Reference · June 2026</p>
+    <span class="footer-tag">v1.0</span>
+  </footer>
+
+</div>
+
+<script>
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.nav-links a');
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(a => {
+        a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id);
+      });
+    }
+  });
+}, { rootMargin: '-30% 0px -60% 0px' });
+sections.forEach(s => obs.observe(s));
+navLinks.forEach(link => {
+  link.addEventListener('click', e => {
+    e.preventDefault();
+    document.querySelector(link.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
+  });
+});
+</script>
+</body>
+</html>

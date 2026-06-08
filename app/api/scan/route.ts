@@ -80,6 +80,7 @@ export interface ScanResultItem {
   condition:   string;
   game:        string;
   art:         string;
+  imageUrl?:   string | null;
   listings: {
     listingId:   string;
     title:       string;
@@ -154,6 +155,7 @@ export async function POST(req: NextRequest) {
         condition:  card.condition,
         game:       card.game,
         art:        card.art,
+        imageUrl:   card.imageUrl ?? null,
         listings:   scoredListings,
       });
 
@@ -192,7 +194,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ results });
+    const isMock = !process.env.EBAY_CLIENT_ID || !process.env.EBAY_CLIENT_SECRET;
+    return NextResponse.json({ results, isMock });
   } catch (err) {
     console.error('[scan POST]', err);
     return NextResponse.json({ error: 'Scan failed', detail: String(err) }, { status: 500 });

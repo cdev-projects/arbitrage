@@ -1,5 +1,7 @@
 'use client';
 
+import { useState, useCallback } from 'react';
+
 interface WatchlistCard {
   id:         string;
   game:       string;
@@ -9,120 +11,128 @@ interface WatchlistCard {
   condition:  string;
   tcgMarket:  number;
   art:        string;
+  imageUrl?:  string | null;
 }
 
 interface Props {
-  cards:        WatchlistCard[];
-  onRemove:     (id: string) => void;
-  onScan:       () => void;
-  scanning:     boolean;
-  minMargin:    number;
-  onMarginChange: (v: number) => void;
+  cards:            WatchlistCard[];
+  onRemove:         (id: string) => void;
+  previewedNumber?: string;
+  maxCount?:        number;
 }
 
-const MAX_WL    = 20;
-const WARN_AT   = 16;
-const RATE      = 5;
-
-function artClass(game: string) {
-  if (game === 'pokemon')  return 'art-pokemon';
-  if (game === 'onepiece') return 'art-onepiece';
-  return 'art-sports';
+interface HoverState {
+  src: string;
+  alt: string;
+  top: number;   // viewport px
+  left: number;  // viewport px
 }
 
-function gameTag(game: string) {
-  if (game === 'pokemon')  return 'PKM';
-  if (game === 'onepiece') return 'OP';
-  return 'SPT';
-}
+const MAX_WL  = 20;
+const WARN_AT = 16;
+const POP_W   = 180; // popover card width px
 
-function gameStyle(game: string) {
-  if (game === 'pokemon')  return { background: '#FAEEDA', color: '#BA7517' };
-  if (game === 'onepiece') return { background: '#FAECE7', color: '#D85A30' };
-  return { background: '#EEEDFE', color: '#7F77DD' };
-}
-
-export default function Watchlist({ cards, onRemove, onScan, scanning, minMargin, onMarginChange }: Props) {
+export default function Watchlist({ cards, onRemove, previewedNumber, maxCount = MAX_WL }: Props) {
   const count = cards.length;
-  const pct   = Math.round((count / MAX_WL) * 100);
+  const pct   = Math.round((count / maxCount) * 100);
   const warn  = count >= WARN_AT;
 
+  const [hover, setHover] = useState<HoverState | null>(null);
+
+  const handleThumbEnter = useCallback((e: React.MouseEvent<HTMLDivElement>, card: WatchlistCard) => {
+    if (!card.imageUrl) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setHover({
+      src:  card.imageUrl,
+      alt:  card.cardName,
+      // centre the popover vertically on the thumbnail, offset to the left
+      top:  rect.top + rect.height / 2,
+      left: rect.left - POP_W - 10,
+    });
+  }, []);
+
+  const handleThumbLeave = useCallback(() => setHover(null), []);
+
   return (
-    <div className="panel">
-      <div className="panel-head">
-        <span className="panel-title">Watchlist</span>
-        <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: 'var(--muted)' }}>
-          {count} / {MAX_WL}
-        </span>
-      </div>
+    <>
+      <div className="panel wl-panel">
+        {/* Header: label + count */}
+        <div className="panel-head" style={{ borderBottom: 'none', paddingBottom: 6 }}>
+          <span className="panel-title">Watch list</span>
+          <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, fontWeight: 500, color: 'var(--ink)' }}>
+            {count} / {maxCount}
+          </span>
+        </div>
 
-      <div>
-        {count === 0 ? (
-          <div className="wl-empty">
-            <div className="wl-empty-head">No cards yet</div>
-            Look up a card on the left.
+        {/* Progress bar directly below header */}
+        <div style={{ padding: '0 1.25rem .75rem' }}>
+          <div className="limit-track">
+            <div className={`limit-fill ${warn ? 'warn' : ''}`} style={{ width: `${pct}%` }} />
           </div>
-        ) : (
-          cards.map((card) => (
-            <div className="wl-item" key={card.id}>
-              <div className={`wl-art ${artClass(card.game)}`}>{card.art}</div>
-              <div className="wl-info">
-                <div className="wl-name">{card.cardName}</div>
-                <div className="wl-sub">
-                  {card.cardNumber} · {card.set}
-                  {card.tcgMarket > 0 ? ` · $${card.tcgMarket}` : ''}
-                </div>
-              </div>
-              <span className="pill" style={{ ...gameStyle(card.game), marginRight: 3 }}>
-                {gameTag(card.game)}
-              </span>
-              <span className="pill pill-cond">{card.condition}</span>
-              <button
-                className="wl-remove"
-                onClick={() => onRemove(card.id)}
-                aria-label="Remove"
-              >
-                <i className="ti ti-x" aria-hidden="true" style={{ fontSize: 11 }} />
-              </button>
+        </div>
+
+        {/* Scrollable list */}
+        <div className="wl-scroll">
+          {count === 0 ? (
+            <div className="wl-empty">
+              <div className="wl-empty-head">No cards yet</div>
+              Browse the grid and click a card to add it.
             </div>
-          ))
-        )}
-      </div>
+          ) : (
+            cards.map((card) => {
+              const isViewing = previewedNumber === card.cardNumber;
+              return (
+                <div className={`wl-row${isViewing ? ' wl-row-viewing' : ''}`} key={card.id}>
+                  {/* Thumbnail — hover opens popover */}
+                  <div
+                    className="wl-thumb"
+                    onMouseEnter={(e) => handleThumbEnter(e, card)}
+                    onMouseLeave={handleThumbLeave}
+                    style={{ cursor: card.imageUrl ? 'zoom-in' : 'default' }}
+                  >
+                    {card.imageUrl
+                      ? <img src={card.imageUrl} alt={card.cardName} loading="lazy" />
+                      : <span className="wl-thumb-placeholder">{card.art || card.cardName[0]}</span>
+                    }
+                  </div>
 
-      <div className="wl-footer">
-        <span>
-          {count >= MAX_WL
-            ? 'Watchlist full'
-            : `${MAX_WL - count} slots left · ${RATE} concurrent queries`}
-        </span>
-        <div className="limit-track">
-          <div
-            className={`limit-fill ${warn ? 'warn' : ''}`}
-            style={{ width: `${pct}%` }}
-          />
+                  {/* Name + number + viewing tag */}
+                  <span className="wl-row-name">
+                    <span className="wl-row-num">{card.cardNumber}</span>
+                    {' '}{card.cardName}
+                    {isViewing && <span className="wl-viewing-tag">viewing</span>}
+                  </span>
+
+                  {/* Price + condition + remove */}
+                  <span className="wl-row-right">
+                    {card.tcgMarket > 0 && (
+                      <span className="wl-price">${card.tcgMarket.toFixed(2)}</span>
+                    )}
+                    <span className="pill pill-cond" style={{ fontSize: 9 }}>{card.condition}</span>
+                    <button className="wl-remove" onClick={() => onRemove(card.id)} aria-label="Remove">
+                      <i className="ti ti-x" aria-hidden="true" style={{ fontSize: 11 }} />
+                    </button>
+                  </span>
+                </div>
+              );
+            })
+          )}
+          {count > 0 && <div className="wl-fade" />}
         </div>
       </div>
 
-      <div className="scan-bar">
-        <div className="margin-inline">
-          <span>Min margin</span>
-          <input
-            type="range"
-            min={10} max={60} step={5}
-            value={minMargin}
-            onChange={(e) => onMarginChange(Number(e.target.value))}
-          />
-          <span className="mv">{minMargin}%</span>
-        </div>
-        <button
-          className="btn-scan"
-          disabled={count === 0 || scanning}
-          onClick={onScan}
+      {/* Hover popover — rendered outside the panel so it's never clipped */}
+      {hover && (
+        <div
+          className="wl-hover-pop"
+          style={{ top: hover.top, left: hover.left }}
+          // Keep popover visible when mouse moves onto it
+          onMouseEnter={() => {/* intentional no-op */}}
+          onMouseLeave={handleThumbLeave}
         >
-          <i className="ti ti-search" aria-hidden="true" />
-          {scanning ? 'Scanning…' : 'Scan all'}
-        </button>
-      </div>
-    </div>
+          <img src={hover.src} alt={hover.alt} />
+        </div>
+      )}
+    </>
   );
 }

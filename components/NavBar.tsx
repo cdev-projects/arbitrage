@@ -10,8 +10,11 @@ export default function NavBar() {
     <nav>
       <Link href="/" className="nav-brand">Card Trading Engine</Link>
       <div className="nav-links">
-        <Link href="/deal-finder" className={pathname === '/deal-finder' ? 'active' : ''}>
-          Deal finder
+        <Link href="/wishlist" className={pathname === '/wishlist' ? 'active' : ''}>
+          Watch list
+        </Link>
+        <Link href="/scan" className={pathname === '/scan' ? 'active' : ''}>
+          Scan
         </Link>
         <Link href="/dashboard" className={pathname === '/dashboard' ? 'active' : ''}>
           Dashboard

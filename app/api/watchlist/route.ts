@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
           tcgCardId: body.tcgCardId ?? match.tcgCardId,
           tcgMarket: body.tcgMarket,
           tcgLow:    body.tcgLow,
+          imageUrl:  body.imageUrl ?? match.imageUrl,
         })
         .where(eq(watchlistCards.id, match.id))
         .returning();

@@ -22,9 +22,10 @@ interface Listing {
 }
 
 interface Props {
-  listing: Listing;
-  game:    string;
-  art:     string;
+  listing:  Listing;
+  game:     string;
+  art:      string;
+  imageUrl?: string | null;
 }
 
 function ListingTypePill({ lt }: { lt: string }) {
@@ -41,7 +42,7 @@ function ListingTypePill({ lt }: { lt: string }) {
   );
 }
 
-export default function ResultCard({ listing, game, art }: Props) {
+export default function ResultCard({ listing, game, art, imageUrl }: Props) {
   const [showBreakdown, setShowBreakdown] = useState(false);
   const mc = listing.isDeal ? 'pos' : 'neg';
   const isAuction = listing.listingType === 'auction' || listing.listingType === 'both';
@@ -49,7 +50,10 @@ export default function ResultCard({ listing, game, art }: Props) {
   return (
     <div className={`rcard ${listing.isDeal ? 'deal' : ''}`}>
       <div className="rcard-body">
-        <div className={`card-art-sm art-${game}`}>{art}</div>
+        {imageUrl
+          ? <img src={imageUrl} alt={art} className={`card-art-sm card-art-img art-${game}`} />
+          : <div className={`card-art-sm art-${game}`}>{art}</div>
+        }
         <div>
           <div className="rbadges">
             <span className={`pill ${listing.isDeal ? 'pill-deal' : 'pill-pass'}`}>

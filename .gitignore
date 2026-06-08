@@ -27,3 +27,6 @@ Thumbs.db
 
 # DB migrations (keep schema, exclude generated)
 /db/migrations/*.sql
+
+# Claude working files (plans, summaries, scratch — not for commit)
+.claude/workspace/
