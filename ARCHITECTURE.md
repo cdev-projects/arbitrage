@@ -62,22 +62,25 @@ Fee constants and the 85% sell target are not user-configurable. The only user c
 ## Database schema
 
 ```
-watchlist_cards
-  id, tcg_card_id, is_active,
-  game, set, card_number, card_name, rarity,
+wishlists
+  id, name, created_at
+
+wishlist_cards
+  id, wishlist_id → wishlists,
+  tcg_card_id, game, set, card_number, card_name, rarity,
   condition, tcg_market, tcg_low, art, image_url, created_at
 
 scan_results
-  id, card_id → watchlist_cards,
+  id, card_id → wishlist_cards,
   listing_id, title, price, condition, listing_type,
   sold_30, net_profit, margin, is_deal, ebay_url, scanned_at
 
 price_snapshots
-  id, card_id → watchlist_cards,
+  id, card_id → wishlist_cards,
   tcg_market, avg_ebay_listing, deal_count, taken_at
 ```
 
-`price_snapshots` is written daily per watchlist card and powers the trend chart and momentum signals on the dashboard.
+`wishlists` is a named container; each has many `wishlist_cards`. A user can have multiple wishlists (e.g. one per set or strategy). `price_snapshots` is written daily per card and powers the trend chart and momentum signals on the dashboard.
 
 ---
 
@@ -100,6 +103,30 @@ price_snapshots
 - **Prompt pattern**: system prompt (listing skill) + card data + sold comps as few-shot examples → JSON `{ title, price, description, item_specifics }`
 - **Model routing**: `claude-haiku-4-5` for <$5 · `claude-sonnet-4-6` for $5–$100 · `claude-opus-4-7` for $100+
 - **Env var**: `ANTHROPIC_API_KEY`
+
+---
+
+## Pages
+
+| Route | Component | Purpose |
+|-------|-----------|---------|
+| `/` | `app/page.tsx` | Dashboard — stats, top movers, recent scans |
+| `/deal-finder` | `app/deal-finder/page.tsx` | Standalone card lookup (no watchlist context) |
+| `/wishlist` | `app/wishlist/page.tsx` | Build and manage named wishlists, browse cards |
+| `/scan` | `app/scan/page.tsx` | Run eBay scan against a selected wishlist |
+
+## API routes
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/sets` | GET | List sets for a game |
+| `/api/cards` | GET | Paginated card catalog, optional name search |
+| `/api/wishlists` | GET, POST | List / create wishlists |
+| `/api/wishlists/[id]/cards` | GET, POST | List / add cards to a wishlist |
+| `/api/wishlists/[id]/cards/[cardId]` | DELETE | Remove a card from a wishlist |
+| `/api/scan` | POST | Run eBay deal scan for a wishlist |
+| `/api/watchlist` | GET | Legacy flat watchlist (pre-wishlists) |
+| `/api/top-movers` | GET | Cards with biggest price delta for dashboard |
 
 ---
 

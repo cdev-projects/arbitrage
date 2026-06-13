@@ -57,7 +57,11 @@ Matches the Fraunces / DM Mono / DM Sans design from the original mockups. CSS c
 - **No selection state** — there is no "selected card" concept; `selectedId` and amber highlighting were intentionally removed. Hover is the only interaction surface before adding.
 - **Leave timer** — a 160 ms `setTimeout` in `CardLookup` delays hiding the panel when the mouse leaves a card, cancelled on `mouseEnter` of the panel, so the user can move into the panel without it closing.
 - **Consistent card height** — `.vg-cell` is `display: flex; flex-direction: column`. `.vg-bottom` is a fixed-height (40px) flex container holding either `.vg-info` or `.vg-add-btn`, preventing layout shift on hover.
+- **Card info layout** — number (left) and market price (right) share a single flex row above the card name, reducing the card footer to two lines.
 - **Slide animation** — only `.cpp-panel` animates (`cpp-panel-slide`, 0.55 s ease-out); the image half appears instantly so it covers the hover preview without a flash.
+- **Panel styling** — `.cpp-panel` uses `--surface-secondary` background, Fraunces serif italic for the card name (matching `db-title`), DM Mono uppercase for the meta line (matching `db-eyebrow`), and teal for price/selected condition pill. This matches the "Build your watch list" header aesthetic.
+- **Card default background** — `.vg-cell` uses `--bg` (warm off-white) against the white `--surface` panel container for a subtle but visible separation.
+- **Add button styling** — matches `.btn-scan`: `--radius-md` corners, `--teal` background, `--teal-light` text, `#085041` hover. Sized to content (`padding: 5px 14px`), not full-width.
 
 ## Data conventions
 
