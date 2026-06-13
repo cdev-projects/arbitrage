@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
         return {
           ...l,
           ...deal,
-          isDeal: isDeal(deal.margin, minMargin),
+          isDeal: isDeal(deal.margin, minMargin) && !l.isLowConfidence,
         };
       });
 

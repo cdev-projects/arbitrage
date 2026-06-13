@@ -93,6 +93,7 @@ price_snapshots
 - **Query construction**: 3-tier waterfall in `lib/query-builder.ts` — Tier 1 (name + number, tight), Tier 2 (name + set + game keyword, medium), Tier 3 (name + game + tcg, broad). Falls to next tier when a tier returns < 3 results. Tier 3 results flagged `isLowConfidence: true`. Card numbers are unquoted so eBay handles slash variants (`199/165`). Price ceiling `price:[0..tcgMarket×1.1]` on all tiers.
 - **Game-specific logic**: Pokémon uses number as unique key; One Piece appends rarity abbreviation (SEC/SR/Leader at all tiers, R at Tier 1 only, UC/C omitted) and excludes `-Japanese -JP`.
 - **Mapped fields**: `isGraded` (title regex post-fetch), `listingImageUrl`, `endsAt`, `bidCount`, `currentBidPrice`, `sellerFeedback`. `sold30` is not available in Browse v1.
+- **Tier 3 / isLowConfidence**: results are shown in the UI but never flagged `isDeal` — too broad to trust for deal scoring. See `docs/ebay-scan.md` for full detail.
 - **Rate limit**: 5,000 calls/day — 5 concurrent queries keeps well under the cap
 - **Env vars**: `EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET`, `EBAY_MARKETPLACE_ID`
 

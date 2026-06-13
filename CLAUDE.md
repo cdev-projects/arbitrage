@@ -13,6 +13,7 @@ When a plan produces a decision worth keeping, capture it into this file via `/c
 - `README.md` — business context, quick start, high-level structure. Audience: humans.
 - `ARCHITECTURE.md` — system design, diagrams, schema, API details, design decisions. Audience: engineers.
 - `docs/context-system.html` — reference doc explaining the Claude context system (CLAUDE.md, memory, chat vs Code vs Cowork).
+- `docs/ebay-scan.md` — full feature doc for the eBay scan: query strategy, field mapping, UI, known issues.
 
 ## Commands
 
@@ -65,6 +66,8 @@ npm run db:studio    # Drizzle Studio UI
 **Token cache** — `globalThis.__ebayToken` survives Next.js serverless warm restarts. Invalidated 60 s before actual expiry.
 
 **Per-card error isolation** — `scanCardSafe` in `app/api/scan/route.ts` wraps each card scan in try/catch. A failed card produces `{ listings: [], error: string }` instead of failing the whole scan. The `error` field surfaces in `ScanResults` as an error count in the fee strip.
+
+**Tier 3 never isDeal** — `isLowConfidence` listings (Tier 3) are excluded from `isDeal` regardless of margin. They appear in the "All" tab with the "Broad search" badge as informational only. This prevents false positives from wrong-card or off-topic matches. Logic in `app/api/scan/route.ts`: `isDeal: isDeal(margin, minMargin) && !l.isLowConfidence`.
 
 ## eBay listing fields
 
