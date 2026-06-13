@@ -12,7 +12,7 @@ interface WatchlistMeta {
 
 interface WatchlistCard {
   id:         string;
-  wishlistId: string | null;
+  watchlistId: string | null;
   tcgCardId?: string | null;
   game:       string;
   set:        string;
@@ -100,7 +100,7 @@ export default function WatchlistPage() {
     if (!dbAvailable) {
       setCards((prev) => {
         const dup = prev.find((c) => c.game === card.game && c.set === card.set && c.cardNumber === card.cardNumber && c.condition === card.condition);
-        return dup ? prev : [...prev, { ...card, id: `local-${Date.now()}`, wishlistId: null }];
+        return dup ? prev : [...prev, { ...card, id: `local-${Date.now()}`, watchlistId: null }];
       });
       return;
     }

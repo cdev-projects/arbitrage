@@ -12,7 +12,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const cards = await db
       .select()
       .from(watchlistCards)
-      .where(and(eq(watchlistCards.wishlistId, id), eq(watchlistCards.isActive, true)))
+      .where(and(eq(watchlistCards.watchlistId, id), eq(watchlistCards.isActive, true)))
       .orderBy(watchlistCards.createdAt);
     return NextResponse.json(cards);
   } catch (err) {
@@ -25,12 +25,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const { id } = await params;
     const db = getDb();
-    const body = await req.json() as Omit<NewWatchlistCard, 'wishlistId'>;
+    const body = await req.json() as Omit<NewWatchlistCard, 'watchlistId'>;
 
     const existing = await db
       .select()
       .from(watchlistCards)
-      .where(eq(watchlistCards.wishlistId, id));
+      .where(eq(watchlistCards.watchlistId, id));
 
     const match = existing.find(
       (c) => c.game === body.game && c.set === body.set &&
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const [created] = await db
       .insert(watchlistCards)
-      .values({ ...body, wishlistId: id })
+      .values({ ...body, watchlistId: id })
       .returning();
     return NextResponse.json(created, { status: 201 });
   } catch (err) {

@@ -62,26 +62,25 @@ Fee constants and the 85% sell target are not user-configurable. The only user c
 ## Database schema
 
 ```
-wishlists
+watchlists
   id, name, created_at
 
-wishlist_cards
-  id, wishlist_id → wishlists,
+watchlist_cards
+  id, watchlist_id → watchlists,
   tcg_card_id, game, set, card_number, card_name, rarity,
   condition, tcg_market, tcg_low, art, image_url, created_at
 
 scan_results
-  id, card_id → wishlist_cards,
+  id, card_id → watchlist_cards,
   listing_id, title, price, condition, listing_type,
-  sold_30 (column kept, never written — Browse v1 doesn't provide this),
   net_profit, margin, is_deal, ebay_url, scanned_at
 
 price_snapshots
-  id, card_id → wishlist_cards,
+  id, card_id → watchlist_cards,
   tcg_market, avg_ebay_listing, deal_count, taken_at
 ```
 
-`wishlists` / `wishlist_cards` is the DB naming; the application layer uses `watchlist` everywhere (routes, UI, TypeScript identifiers). Do not rename the DB tables/columns — that requires a migration. `price_snapshots` is written daily per card and powers the trend chart and momentum signals on the dashboard.
+DB naming matches the application layer — both use `watchlist`. `price_snapshots` is written per scan per card and powers the trend chart and momentum signals on the dashboard.
 
 ---
 
@@ -90,7 +89,7 @@ price_snapshots
 ### eBay Browse API
 - **Auth**: OAuth 2.0 client credentials (app token — no user login needed). Token cached in `globalThis.__ebayToken`; survives serverless warm restarts.
 - **Endpoint**: `GET /buy/browse/v1/item_summary/search`
-- **Query construction**: 3-tier waterfall in `lib/query-builder.ts` — Tier 1 (name + number, tight), Tier 2 (name + set + game keyword, medium), Tier 3 (name + game + tcg, broad). Falls to next tier when a tier returns < 3 results. Tier 3 results flagged `isLowConfidence: true`. Card numbers are unquoted so eBay handles slash variants (`199/165`). Price ceiling `price:[0..tcgMarket×1.1]` on all tiers.
+- **Query construction**: 3-tier waterfall in `lib/query-builder.ts` — Tier 1 (name + number, tight), Tier 2 (name + set + game keyword, medium), Tier 3 (name + game + tcg, broad). Falls to next tier when a tier returns < 3 results. Tier 3 results flagged `isLowConfidence: true`. Card numbers are unquoted so eBay handles slash variants (`199/165`). Price ceiling derived from deal math: `sellAt × (1 − eBayFee − payFee − minMargin/100) − $3` — only fetches listings that could actually be deals at the user's threshold. `minMargin` is threaded from the scan POST body through `searchListings` to `buildFilter`.
 - **Game-specific logic**: Pokémon uses number as unique key; One Piece appends rarity abbreviation (SEC/SR/Leader at all tiers, R at Tier 1 only, UC/C omitted) and excludes `-Japanese -JP`.
 - **Mapped fields**: `isGraded` (title regex post-fetch), `listingImageUrl`, `endsAt`, `bidCount`, `currentBidPrice`, `sellerFeedback`. `sold30` is not available in Browse v1.
 - **Tier 3 / isLowConfidence**: results are shown in the UI but never flagged `isDeal` — too broad to trust for deal scoring. See `docs/ebay-scan.md` for full detail.

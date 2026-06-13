@@ -43,7 +43,7 @@ const MOCK_LISTINGS: Record<string, EbayListing[]> = {
   ],
 };
 
-async function scanCard(card: WatchlistCard): Promise<EbayListing[]> {
+async function scanCard(card: WatchlistCard, minMargin: number): Promise<EbayListing[]> {
   if (!process.env.EBAY_CLIENT_ID || !process.env.EBAY_CLIENT_SECRET) {
     return MOCK_LISTINGS[card.cardName] ?? [];
   }
@@ -55,12 +55,12 @@ async function scanCard(card: WatchlistCard): Promise<EbayListing[]> {
     condition:  card.condition,
     game:       card.game,
     rarity:     card.rarity,
-  }, card.tcgMarket);
+  }, card.tcgMarket, minMargin);
 }
 
-async function scanCardSafe(card: WatchlistCard): Promise<{ listings: EbayListing[]; error?: string }> {
+async function scanCardSafe(card: WatchlistCard, minMargin: number): Promise<{ listings: EbayListing[]; error?: string }> {
   try {
-    return { listings: await scanCard(card) };
+    return { listings: await scanCard(card, minMargin) };
   } catch (err) {
     console.error(`[scan] ${card.cardName}:`, err);
     return { listings: [], error: String(err) };
@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ results: [] });
     }
 
-    const allResults = await runConcurrent(cards, scanCardSafe, CONCURRENCY);
+    const allResults = await runConcurrent(cards, (card) => scanCardSafe(card, minMargin), CONCURRENCY);
 
     const results: ScanResultItem[] = [];
 

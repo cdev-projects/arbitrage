@@ -159,7 +159,7 @@ export default function DashboardPage() {
           </div>
           <div style={{ fontSize: 13 }}>
             Add cards to your watchlist on the{' '}
-            <a href="/deal-finder" style={{ color: 'var(--teal)' }}>Deal finder</a>
+            <a href="/watchlist" style={{ color: 'var(--teal)' }}>Deal finder</a>
             {' '}and run a scan to populate the dashboard.
           </div>
         </div>

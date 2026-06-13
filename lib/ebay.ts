@@ -111,10 +111,11 @@ function mapItems(
 export async function searchListings(
   card: CardIdentity,
   tcgMarket: number,
+  minMargin = 30,
   limit = 20,
 ): Promise<EbayListing[]> {
   const token = await getAppToken();
-  const tiers = buildTieredQueries(card, tcgMarket);
+  const tiers = buildTieredQueries(card, tcgMarket, minMargin);
 
   for (const tier of tiers) {
     const params = new URLSearchParams({

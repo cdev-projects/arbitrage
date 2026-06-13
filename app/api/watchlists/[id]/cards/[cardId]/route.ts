@@ -13,7 +13,7 @@ export async function DELETE(
     await db
       .update(watchlistCards)
       .set({ isActive: false })
-      .where(and(eq(watchlistCards.id, cardId), eq(watchlistCards.wishlistId, id)));
+      .where(and(eq(watchlistCards.id, cardId), eq(watchlistCards.watchlistId, id)));
     return new NextResponse(null, { status: 204 });
   } catch (err) {
     console.error('[watchlist card DELETE]', err);

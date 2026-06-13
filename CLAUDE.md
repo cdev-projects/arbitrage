@@ -58,10 +58,11 @@ npm run db:studio    # Drizzle Studio UI
 | 3 | `"name" pokemon/onepiece tcg excl` + loose conditions + `excludeCategoryIds:{64482}` | Low (`isLowConfidence: true`) |
 
 **Game-specific rules:**
-- **Pokémon** — card number is the unique identifier; rarity term never needed.
-- **One Piece** — rarity term required for SEC/SR/Leader (`all tiers`) and R (`Tier 1 only`, dropped at Tier 2+ due to ambiguity). UC/C rarities omit rarity term entirely. One Piece queries also exclude `-Japanese -JP`.
+- **Pokémon** — card number is the unique identifier; rarity term never needed. Language exclusions (`-Japanese -JP -Korean -KR`) applied at Tier 2/3 only — at Tier 1 the card number anchors to the EN print.
+- **One Piece** — rarity term required for SEC/SR/Leader (`all tiers`) and R (`Tier 1 only`, dropped at Tier 2+ due to ambiguity). UC/C rarities omit rarity term entirely. EN and JP share card numbering, so `-Japanese -JP -Korean -KR` is applied at all tiers.
 - **Card numbers unquoted** — eBay's search handles slash variants (`199/165`, `199 / 165`) naturally.
-- **Price ceiling** — `price:[0..{tcgMarket*1.1}]` applied on all tiers.
+- **Price ceiling** — deal-math derived: `sellAt × (1 − eBayFee − payFee − minMargin/100) − $3`. Only fetches listings that could actually be deals at the user's `minMargin`. For a $100 card at 30% threshold: old ceiling $110 → new ceiling ~$43. `minMargin` is threaded from the scan POST body through `searchListings(card, tcgMarket, minMargin)` to `buildFilter`. Exported as `dealPriceCeiling(tcgMarket, minMargin)` in `lib/query-builder.ts`.
+- **`BASE_EXCL`** — `-digital -lot -proxy -fake -reprint -sleeve -playmat -binder -tin -booster -altered`. Eliminates accessories and sealed product that match card names in eBay titles. Applied to all games at all tiers.
 
 **Token cache** — `globalThis.__ebayToken` survives Next.js serverless warm restarts. Invalidated 60 s before actual expiry.
 
@@ -83,7 +84,7 @@ npm run db:studio    # Drizzle Studio UI
 | `currentBidPrice` | `item.currentBidPrice.value` | Float |
 | `sellerFeedback` | `item.seller.feedbackScore` | Integer |
 
-**`sold30` is gone** — Browse v1 doesn't provide sold count. The `sold_30` DB column is kept (no migration needed) but is never written to.
+**`sold30` is gone** — Browse v1 doesn't provide sold count. The `sold_30` DB column has been dropped (migration required: `npm run db:generate && npm run db:migrate`).
 
 ## Design system
 
@@ -106,7 +107,7 @@ Matches the Fraunces / DM Mono / DM Sans design from the original mockups. CSS c
 
 - **`cleanName()`** in `lib/tcg.ts` strips artifacts the TCG API embeds in card names: trailing `NNN/NNN` numbers, promo codes like `SWSH050`, and trailing ` - `. Apply at the `toCard()` mapping layer, not in UI.
 - **Price formatting** — always render prices with `.toFixed(2)`. Never interpolate a raw `number` into a price string.
-- **DB naming vs app naming** — the DB table is `wishlists` / column `wishlist_id`; application layer uses `watchlist` everywhere. Do not rename DB columns without a migration.
+- **DB naming** — DB tables and application layer are now aligned: `watchlists` table, `watchlist_id` FK column, `watchlist` everywhere in routes and TypeScript.
 
 ## Phase plan
 
