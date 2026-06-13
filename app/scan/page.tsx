@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ScanResults from '@/components/deal-finder/ScanResults';
 
-interface WishlistMeta {
+interface WatchlistMeta {
   id:        string;
   name:      string;
   cardCount: number;
@@ -37,7 +37,9 @@ interface ScanResult {
   imageUrl?:  string | null;
   listings:   {
     listingId: string; title: string; price: number; condition: string;
-    listingType: string; sold30: number | null; ebayUrl: string;
+    listingType: string; ebayUrl: string; isLowConfidence: boolean; isGraded: boolean;
+    listingImageUrl?: string; endsAt?: string; bidCount?: number;
+    currentBidPrice?: number; sellerFeedback?: number;
     sellAt: number; ebayFee: number; payFee: number; shipping: number;
     profit: number; margin: number; isDeal: boolean;
   }[];
@@ -54,28 +56,22 @@ const MOCK_RESULTS: ScanResult[] = [
     condition: 'NM', game: 'pokemon', art: '🔥', imageUrl: null,
     listings: [
       {
-        listingId: 'ebay-1001',
-        title: 'Charizard ex 025/191 Surging Sparks Near Mint',
-        price: 42.00, condition: 'NM', listingType: 'bin', sold30: 12,
-        ebayUrl: 'https://www.ebay.com/itm/example-1001',
-        sellAt: 71.57, ebayFee: 9.48, payFee: 2.15, shipping: 3.00,
-        profit: 14.94, margin: 20.9, isDeal: false,
+        listingId: 'ebay-1001', title: 'Charizard ex 025/191 Surging Sparks Near Mint',
+        price: 42.00, condition: 'NM', listingType: 'bin',
+        ebayUrl: 'https://www.ebay.com/itm/example-1001', isLowConfidence: false, isGraded: false,
+        sellAt: 71.57, ebayFee: 9.48, payFee: 2.15, shipping: 3.00, profit: 14.94, margin: 20.9, isDeal: false,
       },
       {
-        listingId: 'ebay-1002',
-        title: 'Pokémon Charizard ex 25/191 Surging Sparks NM PSA Ready',
-        price: 31.00, condition: 'NM', listingType: 'auction', sold30: 8,
-        ebayUrl: 'https://www.ebay.com/itm/example-1002',
-        sellAt: 71.57, ebayFee: 9.48, payFee: 2.15, shipping: 3.00,
-        profit: 25.94, margin: 36.2, isDeal: true,
+        listingId: 'ebay-1002', title: 'Pokémon Charizard ex 25/191 Surging Sparks NM PSA Ready',
+        price: 31.00, condition: 'NM', listingType: 'auction',
+        ebayUrl: 'https://www.ebay.com/itm/example-1002', isLowConfidence: false, isGraded: false,
+        sellAt: 71.57, ebayFee: 9.48, payFee: 2.15, shipping: 3.00, profit: 25.94, margin: 36.2, isDeal: true,
       },
       {
-        listingId: 'ebay-1003',
-        title: 'Charizard ex Surging Sparks 025/191 Pokemon Card Lot',
-        price: 27.50, condition: 'NM', listingType: 'auction', sold30: 3,
-        ebayUrl: 'https://www.ebay.com/itm/example-1003',
-        sellAt: 71.57, ebayFee: 9.48, payFee: 2.15, shipping: 3.00,
-        profit: 29.44, margin: 41.1, isDeal: true,
+        listingId: 'ebay-1003', title: 'Charizard ex 025/191 NM PSA 10 Surging Sparks',
+        price: 27.50, condition: 'NM', listingType: 'auction',
+        ebayUrl: 'https://www.ebay.com/itm/example-1003', isLowConfidence: false, isGraded: true,
+        sellAt: 71.57, ebayFee: 9.48, payFee: 2.15, shipping: 3.00, profit: 29.44, margin: 41.1, isDeal: true,
       },
     ],
   },
@@ -85,20 +81,16 @@ const MOCK_RESULTS: ScanResult[] = [
     condition: 'LP', game: 'pokemon', art: '⚡', imageUrl: null,
     listings: [
       {
-        listingId: 'ebay-2001',
-        title: 'Pikachu VMAX 044/185 Vivid Voltage Light Played',
-        price: 9.99, condition: 'LP', listingType: 'bin', sold30: 18,
-        ebayUrl: 'https://www.ebay.com/itm/example-2001',
-        sellAt: 19.13, ebayFee: 2.53, payFee: 0.57, shipping: 3.00,
-        profit: 3.04, margin: 15.9, isDeal: false,
+        listingId: 'ebay-2001', title: 'Pikachu VMAX 044/185 Vivid Voltage Light Played',
+        price: 9.99, condition: 'LP', listingType: 'bin',
+        ebayUrl: 'https://www.ebay.com/itm/example-2001', isLowConfidence: false, isGraded: false,
+        sellAt: 19.13, ebayFee: 2.53, payFee: 0.57, shipping: 3.00, profit: 3.04, margin: 15.9, isDeal: false,
       },
       {
-        listingId: 'ebay-2002',
-        title: 'Pikachu VMAX Vivid Voltage 44/185 LP Pokemon',
-        price: 6.50, condition: 'LP', listingType: 'bin', sold30: 5,
-        ebayUrl: 'https://www.ebay.com/itm/example-2002',
-        sellAt: 19.13, ebayFee: 2.53, payFee: 0.57, shipping: 3.00,
-        profit: 6.53, margin: 34.1, isDeal: true,
+        listingId: 'ebay-2002', title: 'Pikachu VMAX Vivid Voltage 44/185 LP Pokemon',
+        price: 6.50, condition: 'LP', listingType: 'bin',
+        ebayUrl: 'https://www.ebay.com/itm/example-2002', isLowConfidence: true, isGraded: false,
+        sellAt: 19.13, ebayFee: 2.53, payFee: 0.57, shipping: 3.00, profit: 6.53, margin: 34.1, isDeal: true,
       },
     ],
   },
@@ -108,20 +100,16 @@ const MOCK_RESULTS: ScanResult[] = [
     condition: 'NM', game: 'pokemon', art: '✨', imageUrl: null,
     listings: [
       {
-        listingId: 'ebay-3001',
-        title: 'Gardevoir ex 86/198 Scarlet Violet Base Set NM',
-        price: 11.00, condition: 'NM', listingType: 'auction', sold30: 6,
-        ebayUrl: 'https://www.ebay.com/itm/example-3001',
-        sellAt: 26.44, ebayFee: 3.50, payFee: 0.79, shipping: 3.00,
-        profit: 8.15, margin: 30.8, isDeal: true,
+        listingId: 'ebay-3001', title: 'Gardevoir ex 86/198 Scarlet Violet Base Set NM',
+        price: 11.00, condition: 'NM', listingType: 'auction',
+        ebayUrl: 'https://www.ebay.com/itm/example-3001', isLowConfidence: false, isGraded: false,
+        sellAt: 26.44, ebayFee: 3.50, payFee: 0.79, shipping: 3.00, profit: 8.15, margin: 30.8, isDeal: true,
       },
       {
-        listingId: 'ebay-3002',
-        title: 'Gardevoir ex Pokemon Card SV Base 086/198 Near Mint',
-        price: 16.00, condition: 'NM', listingType: 'bin', sold30: 24,
-        ebayUrl: 'https://www.ebay.com/itm/example-3002',
-        sellAt: 26.44, ebayFee: 3.50, payFee: 0.79, shipping: 3.00,
-        profit: 3.15, margin: 11.9, isDeal: false,
+        listingId: 'ebay-3002', title: 'Gardevoir ex Pokemon Card SV Base 086/198 Near Mint',
+        price: 16.00, condition: 'NM', listingType: 'bin',
+        ebayUrl: 'https://www.ebay.com/itm/example-3002', isLowConfidence: false, isGraded: false,
+        sellAt: 26.44, ebayFee: 3.50, payFee: 0.79, shipping: 3.00, profit: 3.15, margin: 11.9, isDeal: false,
       },
     ],
   },
@@ -131,12 +119,10 @@ const MOCK_RESULTS: ScanResult[] = [
     condition: 'NM', game: 'pokemon', art: '🌿', imageUrl: null,
     listings: [
       {
-        listingId: 'ebay-4001',
-        title: 'Eevee VMAX 69/203 Evolving Skies Near Mint Pokemon',
-        price: 9.00, condition: 'NM', listingType: 'bin', sold30: 22,
-        ebayUrl: 'https://www.ebay.com/itm/example-4001',
-        sellAt: 12.54, ebayFee: 1.66, payFee: 0.38, shipping: 3.00,
-        profit: -1.50, margin: -12.0, isDeal: false,
+        listingId: 'ebay-4001', title: 'Eevee VMAX 69/203 Evolving Skies Near Mint Pokemon',
+        price: 9.00, condition: 'NM', listingType: 'bin',
+        ebayUrl: 'https://www.ebay.com/itm/example-4001', isLowConfidence: false, isGraded: false,
+        sellAt: 12.54, ebayFee: 1.66, payFee: 0.38, shipping: 3.00, profit: -1.50, margin: -12.0, isDeal: false,
       },
     ],
   },
@@ -146,20 +132,16 @@ const MOCK_RESULTS: ScanResult[] = [
     condition: 'NM', game: 'pokemon', art: '💙', imageUrl: null,
     listings: [
       {
-        listingId: 'ebay-5001',
-        title: 'Lucario VSTAR 056/189 Astral Radiance NM Pokemon TCG',
-        price: 7.00, condition: 'NM', listingType: 'auction', sold30: 9,
-        ebayUrl: 'https://www.ebay.com/itm/example-5001',
-        sellAt: 16.07, ebayFee: 2.13, payFee: 0.48, shipping: 3.00,
-        profit: 3.46, margin: 21.5, isDeal: false,
+        listingId: 'ebay-5001', title: 'Lucario VSTAR 056/189 Astral Radiance NM Pokemon TCG',
+        price: 7.00, condition: 'NM', listingType: 'auction',
+        ebayUrl: 'https://www.ebay.com/itm/example-5001', isLowConfidence: false, isGraded: false,
+        sellAt: 16.07, ebayFee: 2.13, payFee: 0.48, shipping: 3.00, profit: 3.46, margin: 21.5, isDeal: false,
       },
       {
-        listingId: 'ebay-5002',
-        title: 'Pokemon Lucario VSTAR Astral Radiance 56/189 Near Mint',
-        price: 5.25, condition: 'NM', listingType: 'auction', sold30: 4,
-        ebayUrl: 'https://www.ebay.com/itm/example-5002',
-        sellAt: 16.07, ebayFee: 2.13, payFee: 0.48, shipping: 3.00,
-        profit: 5.21, margin: 32.4, isDeal: true,
+        listingId: 'ebay-5002', title: 'Pokemon Lucario VSTAR Astral Radiance 56/189 Near Mint',
+        price: 5.25, condition: 'NM', listingType: 'auction',
+        ebayUrl: 'https://www.ebay.com/itm/example-5002', isLowConfidence: false, isGraded: false,
+        sellAt: 16.07, ebayFee: 2.13, payFee: 0.48, shipping: 3.00, profit: 5.21, margin: 32.4, isDeal: true,
       },
     ],
   },
@@ -174,9 +156,9 @@ function filterMockByMargin(results: ScanResult[], minMargin: number): ScanResul
 
 function ScanPageInner() {
   const searchParams   = useSearchParams();
-  const initialWlId    = searchParams.get('wishlist') ?? '';
+  const initialWlId    = searchParams.get('watchlist') ?? '';
 
-  const [wishlists,  setWishlists]  = useState<WishlistMeta[]>([]);
+  const [watchlists,  setWatchlists]  = useState<WatchlistMeta[]>([]);
   const [selectedId, setSelectedId] = useState(initialWlId);
   const [minMargin,  setMinMargin]  = useState(DEFAULT_MARGIN);
   const [scanning,   setScanning]   = useState(false);
@@ -185,13 +167,13 @@ function ScanPageInner() {
   const [usedMock,   setUsedMock]   = useState(false);
 
   useEffect(() => {
-    fetch('/api/wishlists')
+    fetch('/api/watchlists')
       .then((r) => {
         if (!r.ok) throw new Error('DB unavailable');
         return r.json();
       })
-      .then((list: WishlistMeta[]) => {
-        setWishlists(list);
+      .then((list: WatchlistMeta[]) => {
+        setWatchlists(list);
         if (!initialWlId && list.length > 0) setSelectedId(list[0].id);
       })
       .catch(() => setDbAvail(false));
@@ -204,10 +186,10 @@ function ScanPageInner() {
     setUsedMock(false);
 
     try {
-      const cardsRes = await fetch(`/api/wishlists/${selectedId}/cards`);
-      const wishlistCards: WatchlistCard[] = await cardsRes.json();
+      const cardsRes = await fetch(`/api/watchlists/${selectedId}/cards`);
+      const cards: WatchlistCard[] = await cardsRes.json();
 
-      if (wishlistCards.length === 0) {
+      if (cards.length === 0) {
         alert('This watch list has no cards to scan.');
         return;
       }
@@ -217,7 +199,7 @@ function ScanPageInner() {
         const res = await fetch('/api/scan', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ minMargin, watchlist: wishlistCards }),
+          body: JSON.stringify({ minMargin, watchlist: cards }),
         });
         if (!res.ok) throw new Error('Scan API unavailable');
         const data = await res.json();
@@ -243,7 +225,7 @@ function ScanPageInner() {
     }
   }, [selectedId, minMargin]);
 
-  const selectedWl = wishlists.find((w) => w.id === selectedId);
+  const selectedWl = watchlists.find((w) => w.id === selectedId);
   const canScan    = !!selectedId && (selectedWl?.cardCount ?? 0) > 0 && !scanning;
 
   // Auto-trigger scan when arriving from the wishlist page via "Scan for deals"
@@ -263,7 +245,7 @@ function ScanPageInner() {
           <div className="db-eyebrow">Deal finder · Phase 1</div>
           <div className="db-title">Scan for <em>deals</em></div>
         </div>
-        <a href="/wishlist" style={{ fontSize: 13, color: 'var(--muted)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <a href="/watchlist" style={{ fontSize: 13, color: 'var(--muted)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
           <i className="ti ti-arrow-left" aria-hidden="true" />
           Edit watch list
         </a>
@@ -287,8 +269,8 @@ function ScanPageInner() {
               value={selectedId}
               onChange={(e) => { setSelectedId(e.target.value); setResults(null); }}
             >
-              {wishlists.length === 0 && <option value="">No watch lists yet</option>}
-              {wishlists.map((w) => (
+              {watchlists.length === 0 && <option value="">No watch lists yet</option>}
+              {watchlists.map((w) => (
                 <option key={w.id} value={w.id}>
                   {w.name} ({w.cardCount} {w.cardCount === 1 ? 'card' : 'cards'})
                 </option>

@@ -17,7 +17,7 @@ interface CardGridProps {
   isLoading:        boolean;
   total:            number;
   query:            string;
-  wishlistCount:    number;
+  watchlistCount:   number;
   onLoadMore:       () => void;
   watchlistNumbers: Set<string>;
   onHoverCard?:     (card: TcgCard, rect: DOMRect) => void;
@@ -26,7 +26,7 @@ interface CardGridProps {
 }
 
 export default function CardGrid({
-  cards, hasMore, isLoading, total, query, wishlistCount,
+  cards, hasMore, isLoading, total, query, watchlistCount,
   onLoadMore, watchlistNumbers,
   onHoverCard, onLeaveCard, onAddCard,
 }: CardGridProps) {
@@ -74,8 +74,8 @@ export default function CardGrid({
             {total > cards.length ? ` of ${total}` : ''}
             {query ? ` matching "${query}"` : ' cards'}
           </span>
-          {wishlistCount > 0 && (
-            <span className="vg-wl-badge">{wishlistCount} in watch list</span>
+          {watchlistCount > 0 && (
+            <span className="vg-wl-badge">{watchlistCount} in watch list</span>
           )}
         </div>
       )}

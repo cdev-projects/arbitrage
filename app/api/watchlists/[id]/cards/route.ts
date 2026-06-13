@@ -3,7 +3,7 @@ import { and, eq } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { watchlistCards, NewWatchlistCard } from '@/db/schema/watchlist';
 
-const MAX_PER_WISHLIST = 20;
+const MAX_PER_WATCHLIST = 20;
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -16,7 +16,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       .orderBy(watchlistCards.createdAt);
     return NextResponse.json(cards);
   } catch (err) {
-    console.error('[wishlist cards GET]', err);
+    console.error('[watchlist cards GET]', err);
     return NextResponse.json({ error: 'Failed to fetch cards' }, { status: 500 });
   }
 }
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     if (match) {
       if (match.isActive) {
-        return NextResponse.json({ error: 'Card already in wishlist' }, { status: 409 });
+        return NextResponse.json({ error: 'Card already in watchlist' }, { status: 409 });
       }
       const [reactivated] = await db
         .update(watchlistCards)
@@ -50,8 +50,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const activeCount = existing.filter((c) => c.isActive).length;
-    if (activeCount >= MAX_PER_WISHLIST) {
-      return NextResponse.json({ error: `Wishlist full (max ${MAX_PER_WISHLIST})` }, { status: 400 });
+    if (activeCount >= MAX_PER_WATCHLIST) {
+      return NextResponse.json({ error: `Watchlist full (max ${MAX_PER_WATCHLIST})` }, { status: 400 });
     }
 
     const [created] = await db
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .returning();
     return NextResponse.json(created, { status: 201 });
   } catch (err) {
-    console.error('[wishlist cards POST]', err);
+    console.error('[watchlist cards POST]', err);
     return NextResponse.json({ error: 'Failed to add card' }, { status: 500 });
   }
 }

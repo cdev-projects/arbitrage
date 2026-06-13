@@ -73,23 +73,26 @@ wishlist_cards
 scan_results
   id, card_id → wishlist_cards,
   listing_id, title, price, condition, listing_type,
-  sold_30, net_profit, margin, is_deal, ebay_url, scanned_at
+  sold_30 (column kept, never written — Browse v1 doesn't provide this),
+  net_profit, margin, is_deal, ebay_url, scanned_at
 
 price_snapshots
   id, card_id → wishlist_cards,
   tcg_market, avg_ebay_listing, deal_count, taken_at
 ```
 
-`wishlists` is a named container; each has many `wishlist_cards`. A user can have multiple wishlists (e.g. one per set or strategy). `price_snapshots` is written daily per card and powers the trend chart and momentum signals on the dashboard.
+`wishlists` / `wishlist_cards` is the DB naming; the application layer uses `watchlist` everywhere (routes, UI, TypeScript identifiers). Do not rename the DB tables/columns — that requires a migration. `price_snapshots` is written daily per card and powers the trend chart and momentum signals on the dashboard.
 
 ---
 
 ## API integrations
 
 ### eBay Browse API
-- **Auth**: OAuth 2.0 client credentials (app token — no user login needed)
+- **Auth**: OAuth 2.0 client credentials (app token — no user login needed). Token cached in `globalThis.__ebayToken`; survives serverless warm restarts.
 - **Endpoint**: `GET /buy/browse/v1/item_summary/search`
-- **Query construction**: `q="{cardName}" "{set}" "{cardNumber}"` — never from user-typed text
+- **Query construction**: 3-tier waterfall in `lib/query-builder.ts` — Tier 1 (name + number, tight), Tier 2 (name + set + game keyword, medium), Tier 3 (name + game + tcg, broad). Falls to next tier when a tier returns < 3 results. Tier 3 results flagged `isLowConfidence: true`. Card numbers are unquoted so eBay handles slash variants (`199/165`). Price ceiling `price:[0..tcgMarket×1.1]` on all tiers.
+- **Game-specific logic**: Pokémon uses number as unique key; One Piece appends rarity abbreviation (SEC/SR/Leader at all tiers, R at Tier 1 only, UC/C omitted) and excludes `-Japanese -JP`.
+- **Mapped fields**: `isGraded` (title regex post-fetch), `listingImageUrl`, `endsAt`, `bidCount`, `currentBidPrice`, `sellerFeedback`. `sold30` is not available in Browse v1.
 - **Rate limit**: 5,000 calls/day — 5 concurrent queries keeps well under the cap
 - **Env vars**: `EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET`, `EBAY_MARKETPLACE_ID`
 
@@ -112,8 +115,8 @@ price_snapshots
 |-------|-----------|---------|
 | `/` | `app/page.tsx` | Dashboard — stats, top movers, recent scans |
 | `/deal-finder` | `app/deal-finder/page.tsx` | Standalone card lookup (no watchlist context) |
-| `/wishlist` | `app/wishlist/page.tsx` | Build and manage named wishlists, browse cards |
-| `/scan` | `app/scan/page.tsx` | Run eBay scan against a selected wishlist |
+| `/watchlist` | `app/watchlist/page.tsx` | Build and manage named watchlists, browse cards |
+| `/scan` | `app/scan/page.tsx` | Run eBay scan against a selected watchlist |
 
 ## API routes
 
@@ -121,11 +124,10 @@ price_snapshots
 |-------|--------|---------|
 | `/api/sets` | GET | List sets for a game |
 | `/api/cards` | GET | Paginated card catalog, optional name search |
-| `/api/wishlists` | GET, POST | List / create wishlists |
-| `/api/wishlists/[id]/cards` | GET, POST | List / add cards to a wishlist |
-| `/api/wishlists/[id]/cards/[cardId]` | DELETE | Remove a card from a wishlist |
-| `/api/scan` | POST | Run eBay deal scan for a wishlist |
-| `/api/watchlist` | GET | Legacy flat watchlist (pre-wishlists) |
+| `/api/watchlists` | GET, POST | List / create watchlists |
+| `/api/watchlists/[id]/cards` | GET, POST | List / add cards to a watchlist |
+| `/api/watchlists/[id]/cards/[cardId]` | DELETE | Remove a card from a watchlist |
+| `/api/scan` | POST | Run eBay deal scan for a watchlist |
 | `/api/top-movers` | GET | Cards with biggest price delta for dashboard |
 
 ---

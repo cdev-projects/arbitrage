@@ -20,8 +20,8 @@ export async function GET() {
       .orderBy(wishlists.createdAt);
     return NextResponse.json(rows.map((r) => ({ ...r, cardCount: Number(r.cardCount) })));
   } catch (err) {
-    console.error('[wishlists GET]', err);
-    return NextResponse.json({ error: 'Failed to fetch wishlists' }, { status: 500 });
+    console.error('[watchlists GET]', err);
+    return NextResponse.json({ error: 'Failed to fetch watchlists' }, { status: 500 });
   }
 }
 
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     const [created] = await db.insert(wishlists).values({ name: name.trim() }).returning();
     return NextResponse.json(created, { status: 201 });
   } catch (err) {
-    console.error('[wishlists POST]', err);
-    return NextResponse.json({ error: 'Failed to create wishlist' }, { status: 500 });
+    console.error('[watchlists POST]', err);
+    return NextResponse.json({ error: 'Failed to create watchlist' }, { status: 500 });
   }
 }

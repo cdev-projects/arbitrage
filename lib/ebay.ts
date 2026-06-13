@@ -1,13 +1,20 @@
-import { buildEbayQuery, buildEbayConditionFilter, CardIdentity } from './query-builder';
+import { buildTieredQueries, CardIdentity } from './query-builder';
 
 const EBAY_API_BASE = 'https://api.ebay.com';
 const MARKETPLACE_ID = process.env.EBAY_MARKETPLACE_ID ?? 'EBAY_US';
 
-let tokenCache: { token: string; expiresAt: number } | null = null;
+declare global {
+  // eslint-disable-next-line no-var
+  var __ebayToken: { token: string; expiresAt: number } | undefined;
+}
+
+function getTokenCache() { return globalThis.__ebayToken ?? null; }
+function setTokenCache(v: { token: string; expiresAt: number }) { globalThis.__ebayToken = v; }
 
 async function getAppToken(): Promise<string> {
-  if (tokenCache && Date.now() < tokenCache.expiresAt) {
-    return tokenCache.token;
+  const cached = getTokenCache();
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.token;
   }
 
   const clientId     = process.env.EBAY_CLIENT_ID;
@@ -33,58 +40,42 @@ async function getAppToken(): Promise<string> {
   }
 
   const data = await res.json();
-  tokenCache = {
+  setTokenCache({
     token:     data.access_token,
     expiresAt: Date.now() + (data.expires_in - 60) * 1000,
-  };
+  });
 
-  return tokenCache.token;
+  return globalThis.__ebayToken!.token;
 }
 
 export interface EbayListing {
-  listingId:   string;
-  title:       string;
-  price:       number;
-  condition:   string;
-  listingType: 'bin' | 'auction' | 'both';
-  sold30:      number | null;
-  ebayUrl:     string;
+  listingId:        string;
+  title:            string;
+  price:            number;
+  condition:        string;
+  listingType:      'bin' | 'auction' | 'both';
+  ebayUrl:          string;
+  isLowConfidence:  boolean;
+  isGraded:         boolean;
+  listingImageUrl?: string;
+  endsAt?:          string;
+  bidCount?:        number;
+  currentBidPrice?: number;
+  sellerFeedback?:  number;
 }
 
-export async function searchListings(card: CardIdentity, limit = 20): Promise<EbayListing[]> {
-  const token  = await getAppToken();
-  const query  = buildEbayQuery(card);
-  const condId = buildEbayConditionFilter(card.condition);
+const GRADED_RE = /PSA|CGC|BGS|graded|slab/i;
 
-  const params = new URLSearchParams({
-    q:            query,
-    filter:       `conditionIds:{${condId}},buyingOptions:{FIXED_PRICE|AUCTION}`,
-    sort:         'price',
-    limit:        String(limit),
-    fieldgroups:  'EXTENDED',
-  });
+function mapItems(
+  items: Record<string, unknown>[],
+  fallbackCondition: string,
+  isLowConfidence: boolean,
+): EbayListing[] {
+  return items.map((item): EbayListing => {
+    const title = String(item.title ?? '');
 
-  const res = await fetch(
-    `${EBAY_API_BASE}/buy/browse/v1/item_summary/search?${params}`,
-    {
-      headers: {
-        Authorization:          `Bearer ${token}`,
-        'X-EBAY-C-MARKETPLACE-ID': MARKETPLACE_ID,
-        'Content-Type':         'application/json',
-      },
-    }
-  );
-
-  if (!res.ok) {
-    throw new Error(`eBay search failed: ${res.status}`);
-  }
-
-  const data = await res.json();
-  const items = data.itemSummaries ?? [];
-
-  return items.map((item: Record<string, unknown>): EbayListing => {
     const priceObj = item.price as { value?: string } | undefined;
-    const price = parseFloat(priceObj?.value ?? '0');
+    const price    = parseFloat(priceObj?.value ?? '0');
 
     const buyingOptions = item.buyingOptions as string[] | undefined;
     let listingType: 'bin' | 'auction' | 'both' = 'bin';
@@ -94,16 +85,66 @@ export async function searchListings(card: CardIdentity, limit = 20): Promise<Eb
       listingType = 'auction';
     }
 
-    const itemWebUrl = item.itemWebUrl as string | undefined;
+    const imageObj         = item.image as { imageUrl?: string } | undefined;
+    const currentBidObj    = item.currentBidPrice as { value?: string } | undefined;
+    const sellerObj        = item.seller as { feedbackScore?: number } | undefined;
+    const itemWebUrl       = item.itemWebUrl as string | undefined;
 
     return {
-      listingId:   String(item.itemId ?? ''),
-      title:       String(item.title ?? ''),
+      listingId:        String(item.itemId ?? ''),
+      title,
       price,
-      condition:   String(item.condition ?? card.condition),
+      condition:        String(item.condition ?? fallbackCondition),
       listingType,
-      sold30:      null,
-      ebayUrl:     itemWebUrl ?? `https://www.ebay.com/itm/${item.itemId}`,
+      ebayUrl:          itemWebUrl ?? `https://www.ebay.com/itm/${item.itemId}`,
+      isLowConfidence,
+      isGraded:         GRADED_RE.test(title),
+      listingImageUrl:  imageObj?.imageUrl,
+      endsAt:           item.itemEndDate as string | undefined,
+      bidCount:         item.bidCount as number | undefined,
+      currentBidPrice:  currentBidObj?.value != null ? parseFloat(currentBidObj.value) : undefined,
+      sellerFeedback:   sellerObj?.feedbackScore,
     };
   });
+}
+
+export async function searchListings(
+  card: CardIdentity,
+  tcgMarket: number,
+  limit = 20,
+): Promise<EbayListing[]> {
+  const token = await getAppToken();
+  const tiers = buildTieredQueries(card, tcgMarket);
+
+  for (const tier of tiers) {
+    const params = new URLSearchParams({
+      q:           tier.q,
+      filter:      tier.filter,
+      sort:        'price',
+      limit:       String(limit),
+      fieldgroups: 'EXTENDED',
+    });
+
+    const res = await fetch(
+      `${EBAY_API_BASE}/buy/browse/v1/item_summary/search?${params}`,
+      {
+        headers: {
+          Authorization:              `Bearer ${token}`,
+          'X-EBAY-C-MARKETPLACE-ID': MARKETPLACE_ID,
+          'Content-Type':             'application/json',
+        },
+      },
+    );
+
+    if (!res.ok) throw new Error(`eBay search failed (tier ${tier.tier}): ${res.status}`);
+
+    const items: Record<string, unknown>[] = (await res.json()).itemSummaries ?? [];
+
+    if (items.length >= 3 || tier.tier === 3) {
+      return mapItems(items, card.condition, tier.tier === 3);
+    }
+    // fewer than 3 results — fall through to next tier
+  }
+
+  return [];
 }

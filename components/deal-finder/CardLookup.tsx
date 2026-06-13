@@ -319,7 +319,7 @@ export default function CardLookup({ onAdd, watchlist, watchlistCount, maxWatchl
     isLoading:        loading || loadingMore,
     total,
     query,
-    wishlistCount:    watchlistNumbers.size,
+    watchlistCount:   watchlistNumbers.size,
     onLoadMore:       handleLoadMore,
     watchlistNumbers,
     onHoverCard:      handleHoverCard,

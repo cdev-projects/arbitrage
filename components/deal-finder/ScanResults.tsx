@@ -4,20 +4,26 @@ import { useState } from 'react';
 import ResultCard from './ResultCard';
 
 interface Listing {
-  listingId:   string;
-  title:       string;
-  price:       number;
-  condition:   string;
-  listingType: string;
-  sold30:      number | null;
-  ebayUrl:     string;
-  sellAt:      number;
-  ebayFee:     number;
-  payFee:      number;
-  shipping:    number;
-  profit:      number;
-  margin:      number;
-  isDeal:      boolean;
+  listingId:        string;
+  title:            string;
+  price:            number;
+  condition:        string;
+  listingType:      string;
+  ebayUrl:          string;
+  isLowConfidence:  boolean;
+  isGraded:         boolean;
+  listingImageUrl?: string;
+  endsAt?:          string;
+  bidCount?:        number;
+  currentBidPrice?: number;
+  sellerFeedback?:  number;
+  sellAt:           number;
+  ebayFee:          number;
+  payFee:           number;
+  shipping:         number;
+  profit:           number;
+  margin:           number;
+  isDeal:           boolean;
 }
 
 interface CardResult {
@@ -30,6 +36,7 @@ interface CardResult {
   game:       string;
   art:        string;
   imageUrl?:  string | null;
+  error?:     string;
   listings:   Listing[];
 }
 
@@ -93,6 +100,12 @@ export default function ScanResults({ results, minMargin }: Props) {
           <span className="fee-val">$3 · $5.50 · $8</span>
         </div>
         <span className="fee-api">{results.length} eBay {results.length === 1 ? 'query' : 'queries'} · 5 concurrent</span>
+        {results.filter((r) => r.error).length > 0 && (
+          <span className="fee-api" style={{ color: 'var(--coral)' }}>
+            <i className="ti ti-alert-circle" aria-hidden="true" style={{ fontSize: 12 }} />
+            {' '}{results.filter((r) => r.error).length} {results.filter((r) => r.error).length === 1 ? 'error' : 'errors'} skipped
+          </span>
+        )}
       </div>
 
       <div className="results-header">
@@ -136,8 +149,12 @@ export default function ScanResults({ results, minMargin }: Props) {
           const shown   = card.listings.filter(
             (l) => typeMatches(l.listingType, typeFilter) && (tab === 'all' || l.isDeal)
           );
-          const gDeals  = card.listings.filter((l) => l.isDeal).length;
+          const gDeals   = card.listings.filter((l) => l.isDeal).length;
           const bestDeal = shown.filter((l) => l.isDeal).sort((a, b) => b.profit - a.profit)[0];
+          const compPrices = card.listings.map((l) => l.price);
+          const compMin    = compPrices.length > 0 ? Math.min(...compPrices) : 0;
+          const compMax    = compPrices.length > 0 ? Math.max(...compPrices) : 0;
+          const compCount  = compPrices.length;
 
           return (
             <div className="card-group" key={card.cardId}>
@@ -170,7 +187,7 @@ export default function ScanResults({ results, minMargin }: Props) {
                 <div className="cg-body open">
                   <div className="rlist">
                     {shown.map((l) => (
-                      <ResultCard key={l.listingId} listing={l} game={card.game} art={card.art} imageUrl={card.imageUrl} />
+                      <ResultCard key={l.listingId} listing={l} game={card.game} art={card.art} imageUrl={card.imageUrl} compMin={compMin} compMax={compMax} compCount={compCount} />
                     ))}
                   </div>
                 </div>

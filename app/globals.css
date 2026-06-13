@@ -325,9 +325,13 @@ nav {
 .pill-both { background: var(--purple-light); color: #3C3489; }
 .pill-rarity { background: var(--purple-light); color: #3C3489; }
 .pill-tcg { background: var(--teal-light); color: var(--teal); }
-.pill-hot { background: var(--coral-light); color: #712B13; }
-.pill-warm { background: var(--amber-light); color: #633806; }
-.pill-cold { background: var(--gray-light); color: var(--gray-mid); }
+.pill-hot      { background: var(--coral-light);  color: #712B13; }
+.pill-warm     { background: var(--amber-light);  color: #633806; }
+.pill-cold     { background: var(--gray-light);   color: var(--gray-mid); }
+.pill-graded   { background: var(--purple-light); color: #3C3489; }
+.pill-low-conf { background: var(--gray-light);   color: var(--gray-mid); }
+.pill-ends     { background: var(--amber-light);  color: #633806; }
+.pill-bids     { background: var(--gray-light);   color: var(--gray-dark); }
 
 /* ── ART BACKGROUNDS ───────────────────────────────────── */
 .art-pokemon  { background: var(--amber-light); color: var(--amber-mid); }
@@ -413,6 +417,10 @@ nav {
 .pfl { font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 .pfv { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: var(--ink); }
 .anote { margin-top: 5px; font-size: 11px; color: var(--amber); display: flex; align-items: center; gap: 4px; }
+.comps-bar-wrap { margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
+.comps-label    { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); }
+.comps-track    { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.comps-fill     { height: 100%; border-radius: 2px; transition: width 0.3s ease; }
 .rprofit { text-align: right; min-width: 68px; padding-top: 1px; }
 .pnum { font-family: 'Fraunces', serif; font-size: 21px; font-weight: 300; line-height: 1; }
 .pnum.pos { color: var(--teal); } .pnum.neg { color: var(--coral); }
@@ -524,7 +532,7 @@ nav {
 .vg-empty      { padding: 2rem 1.25rem; text-align: center; color: var(--muted); font-size: 13px; }
 .vg-empty-head { font-family: 'Fraunces', serif; font-size: 15px; font-weight: 300; color: var(--ink); margin-bottom: 3px; }
 
-/* ── WISHLIST PANEL ─────────────────────────────────────── */
+/* ── WATCHLIST PANEL ────────────────────────────────────── */
 .wl-panel {
   background: var(--surface-secondary); border: 0.5px solid var(--border);
   display: flex; flex-direction: column; height: 480px;
@@ -591,7 +599,7 @@ nav {
 .browse-form-row select,
 .browse-form-row input  { width: 100%; }
 
-/* ── WISHLISTS PAGE ─────────────────────────────────────── */
+/* ── WATCHLISTS PAGE ────────────────────────────────────── */
 .wl-selector-row {
   display: flex; align-items: center; gap: 8px; margin-bottom: 1.25rem;
 }

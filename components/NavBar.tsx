@@ -10,7 +10,7 @@ export default function NavBar() {
     <nav>
       <Link href="/" className="nav-brand">Card Trading Engine</Link>
       <div className="nav-links">
-        <Link href="/wishlist" className={pathname === '/wishlist' ? 'active' : ''}>
+        <Link href="/watchlist" className={pathname === '/watchlist' ? 'active' : ''}>
           Watch list
         </Link>
         <Link href="/scan" className={pathname === '/scan' ? 'active' : ''}>

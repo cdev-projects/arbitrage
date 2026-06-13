@@ -16,7 +16,7 @@ export async function DELETE(
       .where(and(eq(watchlistCards.id, cardId), eq(watchlistCards.wishlistId, id)));
     return new NextResponse(null, { status: 204 });
   } catch (err) {
-    console.error('[wishlist card DELETE]', err);
+    console.error('[watchlist card DELETE]', err);
     return NextResponse.json({ error: 'Failed to remove card' }, { status: 500 });
   }
 }

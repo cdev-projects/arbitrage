@@ -46,6 +46,42 @@ npm run db:studio    # Drizzle Studio UI
 - **TCG API cache** — 24h in-memory cache; free tier is 100 calls/day.
 - **No auth in Phase 1** — single-user local tool.
 
+## eBay query strategy (`lib/query-builder.ts`)
+
+3-tier waterfall per card — fall to the next tier only when a tier returns fewer than 3 results:
+
+| Tier | Query shape | Confidence |
+|------|-------------|------------|
+| 1 | `"name" number -digital -lot -proxy -fake -reprint` | High |
+| 2 | `"name" "set" pokemon/onepiece excl` | Medium |
+| 3 | `"name" pokemon/onepiece tcg excl` + loose conditions + `excludeCategoryIds:{64482}` | Low (`isLowConfidence: true`) |
+
+**Game-specific rules:**
+- **Pokémon** — card number is the unique identifier; rarity term never needed.
+- **One Piece** — rarity term required for SEC/SR/Leader (`all tiers`) and R (`Tier 1 only`, dropped at Tier 2+ due to ambiguity). UC/C rarities omit rarity term entirely. One Piece queries also exclude `-Japanese -JP`.
+- **Card numbers unquoted** — eBay's search handles slash variants (`199/165`, `199 / 165`) naturally.
+- **Price ceiling** — `price:[0..{tcgMarket*1.1}]` applied on all tiers.
+
+**Token cache** — `globalThis.__ebayToken` survives Next.js serverless warm restarts. Invalidated 60 s before actual expiry.
+
+**Per-card error isolation** — `scanCardSafe` in `app/api/scan/route.ts` wraps each card scan in try/catch. A failed card produces `{ listings: [], error: string }` instead of failing the whole scan. The `error` field surfaces in `ScanResults` as an error count in the fee strip.
+
+## eBay listing fields
+
+`EbayListing` in `lib/ebay.ts` maps these Browse v1 fields:
+
+| Field | Source | Notes |
+|-------|--------|-------|
+| `isGraded` | title regex `/PSA\|CGC\|BGS\|graded\|slab/i` | Post-fetch detection; graded cards are included, not excluded |
+| `isLowConfidence` | set by query tier | `true` for Tier 3 results only |
+| `listingImageUrl` | `item.image.imageUrl` | eBay listing photo; shown in ResultCard if present |
+| `endsAt` | `item.itemEndDate` | ISO string; UI computes "Ends Xh Ym" at render time |
+| `bidCount` | `item.bidCount` | Shown next to listing type pill when > 0 |
+| `currentBidPrice` | `item.currentBidPrice.value` | Float |
+| `sellerFeedback` | `item.seller.feedbackScore` | Integer |
+
+**`sold30` is gone** — Browse v1 doesn't provide sold count. The `sold_30` DB column is kept (no migration needed) but is never written to.
+
 ## Design system
 
 Matches the Fraunces / DM Mono / DM Sans design from the original mockups. CSS custom properties are defined in `app/globals.css`. Do not introduce new colour tokens or font families. Use the `--teal`, `--amber`, `--coral` etc. tokens that already exist.
@@ -67,6 +103,7 @@ Matches the Fraunces / DM Mono / DM Sans design from the original mockups. CSS c
 
 - **`cleanName()`** in `lib/tcg.ts` strips artifacts the TCG API embeds in card names: trailing `NNN/NNN` numbers, promo codes like `SWSH050`, and trailing ` - `. Apply at the `toCard()` mapping layer, not in UI.
 - **Price formatting** — always render prices with `.toFixed(2)`. Never interpolate a raw `number` into a price string.
+- **DB naming vs app naming** — the DB table is `wishlists` / column `wishlist_id`; application layer uses `watchlist` everywhere. Do not rename DB columns without a migration.
 
 ## Phase plan
 

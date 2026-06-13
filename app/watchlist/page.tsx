@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import CardLookup, { TcgSet, CardLookupFormState } from '@/components/deal-finder/CardLookup';
 import Watchlist from '@/components/deal-finder/Watchlist';
 
-interface WishlistMeta {
+interface WatchlistMeta {
   id:        string;
   name:      string;
   cardCount: number;
@@ -26,16 +26,16 @@ interface WatchlistCard {
   imageUrl?:  string | null;
 }
 
-const MAX_PER_WISHLIST = 20;
+const MAX_PER_WATCHLIST = 20;
 
 const GAMES = [
   { value: 'pokemon',  label: 'Pokémon' },
   { value: 'onepiece', label: 'One Piece' },
 ];
 
-export default function WishlistPage() {
-  // ── Wishlist management ─────────────────────────────────────────────────────
-  const [wishlists,    setWishlists]    = useState<WishlistMeta[]>([]);
+export default function WatchlistPage() {
+  // ── Watchlist management ─────────────────────────────────────────────────────
+  const [watchlists,   setWatchlists]   = useState<WatchlistMeta[]>([]);
   const [selectedId,   setSelectedId]   = useState('');
   const [cards,        setCards]        = useState<WatchlistCard[]>([]);
   const [dbAvailable,  setDbAvailable]  = useState(true);
@@ -58,35 +58,35 @@ export default function WishlistPage() {
       .catch(console.error);
   }, [game]);
 
-  // ── Wishlist load & auto-create ─────────────────────────────────────────────
+  // ── Watchlist load & auto-create ─────────────────────────────────────────────
   useEffect(() => {
-    fetch('/api/wishlists')
+    fetch('/api/watchlists')
       .then((r) => {
         if (!r.ok) throw new Error('DB unavailable');
         return r.json();
       })
-      .then(async (list: WishlistMeta[]) => {
+      .then(async (list: WatchlistMeta[]) => {
         if (list.length === 0) {
-          const res = await fetch('/api/wishlists', {
+          const res = await fetch('/api/watchlists', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: 'My Watch List' }),
           });
-          const created: WishlistMeta = await res.json();
-          setWishlists([{ ...created, cardCount: 0 }]);
+          const created: WatchlistMeta = await res.json();
+          setWatchlists([{ ...created, cardCount: 0 }]);
           setSelectedId(created.id);
         } else {
-          setWishlists(list);
+          setWatchlists(list);
           setSelectedId(list[0].id);
         }
       })
       .catch(() => setDbAvailable(false));
   }, []);
 
-  // Load cards when selected wishlist changes
+  // Load cards when selected watchlist changes
   useEffect(() => {
     if (!selectedId || !dbAvailable) return;
-    fetch(`/api/wishlists/${selectedId}/cards`)
+    fetch(`/api/watchlists/${selectedId}/cards`)
       .then((r) => r.json())
       .then((data: WatchlistCard[]) => setCards(Array.isArray(data) ? data : []))
       .catch(console.error);
@@ -105,7 +105,7 @@ export default function WishlistPage() {
       return;
     }
     try {
-      const res = await fetch(`/api/wishlists/${selectedId}/cards`, {
+      const res = await fetch(`/api/watchlists/${selectedId}/cards`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(card),
@@ -117,7 +117,7 @@ export default function WishlistPage() {
       }
       const created: WatchlistCard = await res.json();
       setCards((prev) => [...prev, created]);
-      setWishlists((prev) => prev.map((w) => w.id === selectedId ? { ...w, cardCount: Number(w.cardCount) + 1 } : w));
+      setWatchlists((prev) => prev.map((w) => w.id === selectedId ? { ...w, cardCount: Number(w.cardCount) + 1 } : w));
     } catch {
       alert('Failed to add card');
     }
@@ -125,27 +125,27 @@ export default function WishlistPage() {
 
   const handleRemove = useCallback(async (id: string) => {
     setCards((prev) => prev.filter((c) => c.id !== id));
-    setWishlists((prev) => prev.map((w) => w.id === selectedId ? { ...w, cardCount: Math.max(0, Number(w.cardCount) - 1) } : w));
+    setWatchlists((prev) => prev.map((w) => w.id === selectedId ? { ...w, cardCount: Math.max(0, Number(w.cardCount) - 1) } : w));
     if (!dbAvailable || id.startsWith('local-')) return;
-    await fetch(`/api/wishlists/${selectedId}/cards/${id}`, { method: 'DELETE' }).catch(console.error);
+    await fetch(`/api/watchlists/${selectedId}/cards/${id}`, { method: 'DELETE' }).catch(console.error);
   }, [dbAvailable, selectedId]);
 
-  const handleNewWishlist = useCallback(async () => {
+  const handleNewWatchlist = useCallback(async () => {
     const name = prompt('Watch list name:')?.trim();
     if (!name) return;
     setCreating(true);
     try {
-      const res = await fetch('/api/wishlists', {
+      const res = await fetch('/api/watchlists', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
       });
-      const created: WishlistMeta = await res.json();
-      setWishlists((prev) => [...prev, { ...created, cardCount: 0 }]);
+      const created: WatchlistMeta = await res.json();
+      setWatchlists((prev) => [...prev, { ...created, cardCount: 0 }]);
       setSelectedId(created.id);
       setCards([]);
     } catch {
-      alert('Failed to create wishlist');
+      alert('Failed to create watchlist');
     } finally {
       setCreating(false);
     }
@@ -171,7 +171,7 @@ export default function WishlistPage() {
           <div className="db-title">Build your <em>watch list</em></div>
         </div>
         <a
-          href={selectedId && cards.length > 0 ? `/scan?wishlist=${selectedId}` : '/scan'}
+          href={selectedId && cards.length > 0 ? `/scan?watchlist=${selectedId}` : '/scan'}
           className={`btn-scan-link${!selectedId || cards.length === 0 ? ' disabled' : ''}`}
           onClick={(e) => { if (!selectedId || cards.length === 0) e.preventDefault(); }}
         >
@@ -182,11 +182,11 @@ export default function WishlistPage() {
 
       {!dbAvailable && (
         <div style={{ marginBottom: '1rem', padding: '10px 14px', background: 'var(--amber-light)', borderRadius: 'var(--radius-md)', border: '0.5px solid var(--amber-mid)', fontSize: 13, color: 'var(--amber)' }}>
-          <strong>Database not configured</strong> — add <code>DATABASE_URL</code> to <code>.env.local</code> to persist wishlists.
+          <strong>Database not configured</strong> — add <code>DATABASE_URL</code> to <code>.env.local</code> to persist watchlists.
         </div>
       )}
 
-      {/* Wishlist selector */}
+      {/* Watchlist selector */}
       {dbAvailable && (
         <div className="wl-selector-row" style={{ marginBottom: '1rem' }}>
           <select
@@ -194,11 +194,11 @@ export default function WishlistPage() {
             onChange={(e) => { setSelectedId(e.target.value); setCards([]); }}
             style={{ height: 36, borderRadius: 'var(--radius-md)', fontSize: 13, fontFamily: 'DM Sans, sans-serif', background: 'var(--surface-secondary)', border: '0.5px solid var(--border)', color: 'var(--ink)', padding: '0 10px', flex: 1, outline: 'none' }}
           >
-            {wishlists.map((w) => (
+            {watchlists.map((w) => (
               <option key={w.id} value={w.id}>{w.name} ({w.cardCount} cards)</option>
             ))}
           </select>
-          <button className="btn-new-wl" onClick={handleNewWishlist} disabled={creating}>
+          <button className="btn-new-wl" onClick={handleNewWatchlist} disabled={creating}>
             <i className="ti ti-plus" aria-hidden="true" />
             New watch list
           </button>
@@ -253,17 +253,17 @@ export default function WishlistPage() {
             onAdd={handleAdd}
             watchlist={watchlistEntries}
             watchlistCount={cards.length}
-            maxWatchlist={MAX_PER_WISHLIST}
+            maxWatchlist={MAX_PER_WATCHLIST}
             onPreviewChange={setPreviewedNum}
           />
         </div>
 
-        {/* Right: wishlist panel */}
+        {/* Right: watchlist panel */}
         <Watchlist
           cards={cards}
           onRemove={handleRemove}
           previewedNumber={previewedNum ?? undefined}
-          maxCount={MAX_PER_WISHLIST}
+          maxCount={MAX_PER_WATCHLIST}
         />
       </div>
     </div>
