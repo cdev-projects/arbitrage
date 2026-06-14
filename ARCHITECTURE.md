@@ -69,18 +69,11 @@ watchlist_cards
   id, watchlist_id → watchlists,
   tcg_card_id, game, set, card_number, card_name, rarity,
   condition, tcg_market, tcg_low, art, image_url, created_at
-
-scan_results
-  id, card_id → watchlist_cards,
-  listing_id, title, price, condition, listing_type,
-  net_profit, margin, is_deal, ebay_url, scanned_at
-
-price_snapshots
-  id, card_id → watchlist_cards,
-  tcg_market, avg_ebay_listing, deal_count, taken_at
 ```
 
-DB naming matches the application layer — both use `watchlist`. `price_snapshots` is written per scan per card and powers the trend chart and momentum signals on the dashboard.
+DB naming matches the application layer — both use `watchlist`.
+
+`scan_results` and `price_snapshots` were removed. Writing them synchronously in the scan hot path added latency and non-atomic DB writes with no current consumer — the dashboard hasn't been implemented. They will be re-introduced as async background jobs when the dashboard is properly designed (see Cowork planning first).
 
 ---
 
@@ -91,7 +84,8 @@ DB naming matches the application layer — both use `watchlist`. `price_snapsho
 - **Endpoint**: `GET /buy/browse/v1/item_summary/search`
 - **Query construction**: 3-tier waterfall in `lib/query-builder.ts` — Tier 1 (name + number, tight), Tier 2 (name + set + game keyword, medium), Tier 3 (name + game + tcg, broad). Falls to next tier when a tier returns < 3 results. Tier 3 results flagged `isLowConfidence: true`. Card numbers are unquoted so eBay handles slash variants (`199/165`). Price ceiling derived from deal math: `sellAt × (1 − eBayFee − payFee − minMargin/100) − $3` — only fetches listings that could actually be deals at the user's threshold. `minMargin` is threaded from the scan POST body through `searchListings` to `buildFilter`.
 - **Game-specific logic**: Pokémon uses number as unique key; One Piece appends rarity abbreviation (SEC/SR/Leader at all tiers, R at Tier 1 only, UC/C omitted) and excludes `-Japanese -JP`.
-- **Mapped fields**: `isGraded` (title regex post-fetch), `listingImageUrl`, `endsAt`, `bidCount`, `currentBidPrice`, `sellerFeedback`. `sold30` is not available in Browse v1.
+- **Mapped fields**: `isGraded` (title regex post-fetch), `listingImageUrl` (rewritten to `s-l500` quality), `endsAt`, `bidCount`, `currentBidPrice`, `sellerFeedback`. `sold30` is not available in Browse v1.
+- **Auction price**: eBay `price` field is the starting bid. `currentBidPrice` is used as the effective price for auction and BIN+Auction listings in `mapItems()`.
 - **Tier 3 / isLowConfidence**: results are shown in the UI but never flagged `isDeal` — too broad to trust for deal scoring. See `docs/ebay-scan.md` for full detail.
 - **Rate limit**: 5,000 calls/day — 5 concurrent queries keeps well under the cap
 - **Env vars**: `EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET`, `EBAY_MARKETPLACE_ID`
@@ -127,7 +121,8 @@ DB naming matches the application layer — both use `watchlist`. `price_snapsho
 | `/api/watchlists` | GET, POST | List / create watchlists |
 | `/api/watchlists/[id]/cards` | GET, POST | List / add cards to a watchlist |
 | `/api/watchlists/[id]/cards/[cardId]` | DELETE | Remove a card from a watchlist |
-| `/api/scan` | POST | Run eBay deal scan for a watchlist |
+| `/api/scan` | POST | Run eBay deal scan for a watchlist; returns results directly, no DB writes |
+| `/api/dashboard` | GET | Stubbed — returns empty shape pending dashboard redesign |
 | `/api/top-movers` | GET | Cards with biggest price delta for dashboard |
 
 ---
@@ -142,6 +137,8 @@ DB naming matches the application layer — both use `watchlist`. `price_snapsho
 - **5 concurrent eBay queries** — stays well within the 5,000 calls/day rate limit.
 - **No auth in Phase 1** — single-user local tool. Clerk added when opening to the public.
 - **Vercel → Railway migration at Phase 3** — node-cron requires a persistent process; Vercel serverless functions can't hold one.
+- **No DB writes in scan hot path** — the scan route reads watchlist cards and returns eBay results directly. Any future persistence (scan history, price snapshots) must go through an async background job to avoid latency and partial-write failures.
+- **Unit tests** — pure logic functions in `lib/` are covered by vitest tests in `lib/__tests__/`. Run with `npm run test`. Integration tests are planned but not yet written.
 
 ---
 

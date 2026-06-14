@@ -61,18 +61,18 @@ All fields mapped from Browse v1 (`fieldgroups: EXTENDED`):
 
 | Field | Source | UI usage |
 |-------|--------|----------|
-| `price` | `item.price.value` | Deal algorithm input |
+| `price` | `currentBidPrice` for auctions, `item.price.value` for BIN | Deal algorithm input — eBay `price` is starting bid only |
 | `condition` | `item.condition` | Condition pill |
 | `listingType` | `item.buyingOptions` | BIN / Auction / BIN+Auction pill |
 | `isGraded` | Title regex `/PSA\|CGC\|BGS\|graded\|slab/i` | Purple "Graded" pill + note |
 | `isLowConfidence` | Set by query tier (Tier 3 = true) | Grey "Broad search" pill |
-| `listingImageUrl` | `item.image.imageUrl` | Thumbnail in result card |
-| `endsAt` | `item.itemEndDate` | "Ends Xh Ym" amber pill (auctions < 48h) |
+| `listingImageUrl` | `item.image.imageUrl` with `s-l225` → `s-l500` swap | 40px inline thumbnail; 400px popup on hover |
+| `endsAt` | `item.itemEndDate` | Live countdown pill: `Xd Yh` / `Xh Ym` / `Xm Ys`, ticking every second |
 | `bidCount` | `item.bidCount` | Bid count pill |
-| `currentBidPrice` | `item.currentBidPrice.value` | Available for $0 auction detection |
+| `currentBidPrice` | `item.currentBidPrice.value` | Current auction bid used as effective listing price |
 | `sellerFeedback` | `item.seller.feedbackScore` | Available for future trust scoring |
 
-`sold30` (30-day sales count) is **not available** in Browse v1. The DB column is kept but never written.
+`sold30` (30-day sales count) is **not available** in Browse v1.
 
 ---
 
@@ -105,8 +105,15 @@ Below each listing's prices: position of this listing's price within the min–m
 When `isGraded` is true, an additional note reads: "Margin uses raw TCG price — graded cards sell for more." The margin shown is conservative; graded cards command a premium above raw TCG market price.
 
 ### Tabs and filters
-- **Deals / All** — deals tab hides Pass listings and cards with no deals
+- **Deals / Watching / All** — Deals tab shows margin-qualifying listings; Watching tab shows `isEarlyAuction` listings (amber); All tab shows everything
 - **All types / BIN / Auction** — filter by listing type
+- **Age filter** — 24h / 48h / Off toggle; filters results by `scannedAt` timestamp
+
+### isEarlyAuction / Watching tab
+Auctions that *would* be deals at current bid but close more than 1 hour from now are flagged `isEarlyAuction` and excluded from `isDeal`. They appear in the amber "Watching" tab with a live countdown. The bid price will move before close — treat as a watchlist, not an actionable deal.
+
+### Image hover popup
+Hovering the card thumbnail in a ResultCard shows a 400px popup with the eBay listing photo. The popup is viewport-aware: flips left when near the right edge, anchors to the bottom when near the bottom edge. Uses `opacity`/`pointer-events` CSS so the image preloads when the card renders (no blank popup on first hover). Images are fetched at `s-l500` quality by rewriting the URL suffix in `mapItems()`.
 
 ---
 
@@ -124,14 +131,14 @@ Each card scan is wrapped in `scanCardSafe()`. A network error or bad response f
 
 ## Known issues / backlog
 
-### $0 auction false positives
-New auctions starting at $0.00 with 7+ days remaining score as massive deals. Fields needed for detection (`endsAt`, `currentBidPrice`) are already mapped. Planned fix: exclude from `isDeal` when price < $1 and more than 48h remaining; surface as a "Watching" bucket instead.
-
 ### Junk listing types
-Extended art reprints, display cases, fan art, and sticker listings surface in results. Need user-configurable exclusion terms (e.g. `-"display case" -"fan art" -sticker`). Current hardcoded exclusions: `-digital -lot -proxy -fake -reprint`.
+Some junk listings (e.g. extended art reprints, altered cards) still surface. Use the `CUSTOM_EXCLUSIONS` env var to add terms without a code change. Example: `CUSTOM_EXCLUSIONS=-"extended art",-sticker,-display`. Parsed at startup in `lib/query-builder.ts`.
 
-### Deal dismissal / age filter
-No way to mark deals as reviewed or hide stale results. Planned: auto-hide listings with `scanned_at` > 48h, plus a per-listing Dismiss button writing `dismissed_at` to `scan_results`.
+### Deal dismissal
+No per-listing dismiss yet. Requires a `dismissed_listings` table and a DB view (`active_scan_results`). Must be designed in Cowork before implementation — do not add ad-hoc.
+
+### Age filter
+Scan page has a 24h / 48h / Off toggle that filters by `scannedAt`. This is a client-side filter on the current scan's results, not persistent across sessions.
 
 ### Daily notification
 Planned for Phase 3 (Railway + node-cron). Claude scans on a schedule and sends a deal summary notification.

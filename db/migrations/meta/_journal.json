@@ -32,4 +32,24 @@
     },
     {
       "idx": 4,
-      "version"
+      "version": "7",
+      "when": 1749513600000,
+      "tag": "0004_watchlists_rename",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1781453745015,
+      "tag": "0005_familiar_king_cobra",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781458942191,
+      "tag": "0006_black_serpent_society",
+      "breakpoints": true
+    }
+  ]
+}

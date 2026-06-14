@@ -316,8 +316,9 @@ nav {
   padding: 2px 7px; border-radius: 3px;
   display: inline-flex; align-items: center; gap: 3px;
 }
-.pill-deal { background: var(--teal-light); color: var(--teal); }
-.pill-pass { background: var(--gray-light); color: var(--gray-mid); }
+.pill-deal  { background: var(--teal-light);  color: var(--teal); }
+.pill-pass  { background: var(--gray-light);  color: var(--gray-mid); }
+.pill-watch { background: var(--amber-light); color: #633806; }
 .pill-cond { background: var(--surface-secondary); color: var(--muted); border: 0.5px solid var(--border); }
 .pill-ship { background: var(--gray-light); color: var(--gray-dark); }
 .pill-bin { background: var(--blue-light); color: var(--blue-dark); }
@@ -398,12 +399,12 @@ nav {
   border-top: none;
   border-bottom-left-radius: var(--radius-lg);
   border-bottom-right-radius: var(--radius-lg);
-  overflow: hidden;
 }
 .rlist { display: flex; flex-direction: column; }
 .rcard { background: var(--surface); border-bottom: 0.5px solid var(--border); }
-.rcard:last-child { border-bottom: none; }
-.rcard.deal { border-left: 3px solid var(--teal-mid); }
+.rcard:last-child { border-bottom: none; border-bottom-left-radius: var(--radius-lg); border-bottom-right-radius: var(--radius-lg); }
+.rcard.deal     { border-left: 3px solid var(--teal-mid); }
+.rcard.watching { border-left: 3px solid var(--amber); }
 .rcard-body { display: grid; grid-template-columns: 40px 1fr auto; gap: 11px; padding: .75rem 1.25rem; align-items: start; }
 .card-art-sm {
   width: 40px; height: 56px; border-radius: 4px; flex-shrink: 0;
@@ -411,6 +412,18 @@ nav {
   font-family: 'Fraunces', serif; font-size: 15px; font-weight: 300;
 }
 .card-art-img { object-fit: contain; display: block; }
+.card-art-wrap { position: relative; z-index: 1; }
+.card-art-pop {
+  position: absolute;
+  z-index: 50;
+  width: 410px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+  padding: 6px;
+  transition: opacity 0.12s ease;
+}
+.card-art-pop-img { width: 400px; max-width: none; height: auto; display: block; border-radius: 4px; }
 .rbadges { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 4px; align-items: center; }
 .rname { font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 6px; line-height: 1.4; }
 .rprices { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -423,9 +436,9 @@ nav {
 .comps-fill     { height: 100%; border-radius: 2px; transition: width 0.3s ease; }
 .rprofit { text-align: right; min-width: 68px; padding-top: 1px; }
 .pnum { font-family: 'Fraunces', serif; font-size: 21px; font-weight: 300; line-height: 1; }
-.pnum.pos { color: var(--teal); } .pnum.neg { color: var(--coral); }
+.pnum.pos { color: var(--teal); } .pnum.neg { color: var(--coral); } .pnum.watch { color: var(--amber); }
 .pmarg { font-family: 'DM Mono', monospace; font-size: 10px; margin-top: 2px; }
-.pmarg.pos { color: var(--teal-mid); } .pmarg.neg { color: var(--coral-mid); }
+.pmarg.pos { color: var(--teal-mid); } .pmarg.neg { color: var(--coral-mid); } .pmarg.watch { color: var(--amber); }
 .rfoot { display: flex; gap: 6px; padding: 0 1.25rem .625rem; }
 .btn-bk {
   font-size: 11px; font-family: 'DM Sans', sans-serif;

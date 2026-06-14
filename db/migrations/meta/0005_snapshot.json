@@ -1,6 +1,6 @@
 {
-  "id": "f5e4d3c2-b1a0-9f8e-7d6c-5b4a3e2d1c0b",
-  "prevId": "dc872200-96bc-4d0c-bfa4-850b811e2290",
+  "id": "fe03eadf-7202-48bd-9bd3-ae6dd387ee94",
+  "prevId": "f5e4d3c2-b1a0-9f8e-7d6c-5b4a3e2d1c0b",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -86,6 +86,12 @@
           "primaryKey": false,
           "notNull": false,
           "default": "now()"
+        },
+        "dismissed_at": {
+          "name": "dismissed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -319,12 +325,8 @@
   "policies": {},
   "views": {},
   "_meta": {
-    "columns": {
-      "public.watchlist_cards.watchlist_id": "public.watchlist_cards.wishlist_id"
-    },
+    "columns": {},
     "schemas": {},
-    "tables": {
-      "public.watchlists": "public.wishlists"
-    }
+    "tables": {}
   }
 }

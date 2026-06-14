@@ -11,8 +11,9 @@ interface Listing {
   listingType:      string;
   ebayUrl:          string;
   isLowConfidence:  boolean;
-  isGraded:         boolean;
-  listingImageUrl?: string;
+  isGraded:          boolean;
+  isEarlyAuction?:   boolean;
+  listingImageUrl?:  string;
   endsAt?:          string;
   bidCount?:        number;
   currentBidPrice?: number;
@@ -45,7 +46,7 @@ interface Props {
   minMargin: number;
 }
 
-type TabType  = 'deals' | 'all';
+type TabType  = 'deals' | 'watching' | 'all';
 type TypeFilter = 'all' | 'bin' | 'auction';
 
 function typeMatches(lt: string, filter: TypeFilter): boolean {
@@ -71,13 +72,18 @@ export default function ScanResults({ results, minMargin }: Props) {
     });
   }
 
-  const totalDeals = results.reduce((s, r) => s + r.listings.filter((l) => l.isDeal).length, 0);
-  const totalAll   = results.reduce((s, r) => s + r.listings.length, 0);
+  const totalDeals    = results.reduce((s, r) => s + r.listings.filter((l) => l.isDeal).length, 0);
+  const totalWatching = results.reduce((s, r) => s + r.listings.filter((l) => l.isEarlyAuction).length, 0);
+  const totalAll      = results.reduce((s, r) => s + r.listings.length, 0);
+
+  function listingMatchesTab(l: Listing): boolean {
+    if (tab === 'deals')    return l.isDeal;
+    if (tab === 'watching') return l.isEarlyAuction ?? false;
+    return true;
+  }
 
   const visibleCards = results.filter((r) => {
-    const deals = r.listings.filter((l) => l.isDeal).length;
-    if (tab === 'deals' && deals === 0) return false;
-    const shown = r.listings.filter((l) => typeMatches(l.listingType, typeFilter) && (tab === 'all' || l.isDeal));
+    const shown = r.listings.filter((l) => typeMatches(l.listingType, typeFilter) && listingMatchesTab(l));
     return shown.length > 0;
   });
 
@@ -114,6 +120,13 @@ export default function ScanResults({ results, minMargin }: Props) {
           <button className={`ftab ${tab === 'deals' ? 'on' : ''}`} onClick={() => setTab('deals')}>
             Deals {totalDeals}
           </button>
+          <button
+            className="ftab"
+            style={tab === 'watching' ? { background: '#FAEEDA', color: '#633806', borderColor: '#BA7517' } : {}}
+            onClick={() => setTab('watching')}
+          >
+            <i className="ti ti-eye" aria-hidden="true" style={{ fontSize: 10, verticalAlign: '-1px' }} /> Watching {totalWatching}
+          </button>
           <button className={`ftab ${tab === 'all' ? 'on' : ''}`} onClick={() => setTab('all')}>
             All {totalAll}
           </button>
@@ -140,14 +153,20 @@ export default function ScanResults({ results, minMargin }: Props) {
 
       {visibleCards.length === 0 ? (
         <div className="no-results">
-          <div className="no-results-head">No deals found</div>
-          <span style={{ fontSize: 13 }}>Lower your margin threshold or switch to All.</span>
+          <div className="no-results-head">
+            {tab === 'watching' ? 'Nothing to watch' : 'No deals found'}
+          </div>
+          <span style={{ fontSize: 13 }}>
+            {tab === 'watching'
+              ? 'No profitable auctions closing more than an hour from now.'
+              : 'Lower your margin threshold or switch to All.'}
+          </span>
         </div>
       ) : (
         visibleCards.map((card) => {
           const isOpen  = openGroups.has(card.cardId);
           const shown   = card.listings.filter(
-            (l) => typeMatches(l.listingType, typeFilter) && (tab === 'all' || l.isDeal)
+            (l) => typeMatches(l.listingType, typeFilter) && listingMatchesTab(l)
           );
           const gDeals   = card.listings.filter((l) => l.isDeal).length;
           const bestDeal = shown.filter((l) => l.isDeal).sort((a, b) => b.profit - a.profit)[0];

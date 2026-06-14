@@ -26,6 +26,7 @@ interface WatchlistCard {
 
 interface ScanResult {
   cardId:     string;
+  scannedAt:  string;
   cardName:   string;
   set:        string;
   cardNumber: string;
@@ -38,6 +39,7 @@ interface ScanResult {
   listings:   {
     listingId: string; title: string; price: number; condition: string;
     listingType: string; ebayUrl: string; isLowConfidence: boolean; isGraded: boolean;
+    isEarlyAuction?: boolean;
     listingImageUrl?: string; endsAt?: string; bidCount?: number;
     currentBidPrice?: number; sellerFeedback?: number;
     sellAt: number; ebayFee: number; payFee: number; shipping: number;
@@ -48,8 +50,10 @@ interface ScanResult {
 const DEFAULT_MARGIN = Number(process.env.NEXT_PUBLIC_DEFAULT_MIN_MARGIN ?? 30);
 const MARGIN_STEPS   = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60];
 
+type MockResult = Omit<ScanResult, 'scannedAt'>;
+
 // ── Mock results (used until eBay API access is available) ──────────────────
-const MOCK_RESULTS: ScanResult[] = [
+const MOCK_RESULTS: MockResult[] = [
   {
     cardId: 'mock-001', cardName: 'Charizard ex', set: 'Surging Sparks',
     cardNumber: '025/191', tcgMarket: 84.20, tcgLow: 68.00,
@@ -59,12 +63,14 @@ const MOCK_RESULTS: ScanResult[] = [
         listingId: 'ebay-1001', title: 'Charizard ex 025/191 Surging Sparks Near Mint',
         price: 42.00, condition: 'NM', listingType: 'bin',
         ebayUrl: 'https://www.ebay.com/itm/example-1001', isLowConfidence: false, isGraded: false,
+        listingImageUrl: 'https://picsum.photos/200/280',
         sellAt: 71.57, ebayFee: 9.48, payFee: 2.15, shipping: 3.00, profit: 14.94, margin: 20.9, isDeal: false,
       },
       {
         listingId: 'ebay-1002', title: 'Pokémon Charizard ex 25/191 Surging Sparks NM PSA Ready',
         price: 31.00, condition: 'NM', listingType: 'auction',
         ebayUrl: 'https://www.ebay.com/itm/example-1002', isLowConfidence: false, isGraded: false,
+        listingImageUrl: 'https://picsum.photos/200/280',
         sellAt: 71.57, ebayFee: 9.48, payFee: 2.15, shipping: 3.00, profit: 25.94, margin: 36.2, isDeal: true,
       },
       {
@@ -147,10 +153,12 @@ const MOCK_RESULTS: ScanResult[] = [
   },
 ];
 
-function filterMockByMargin(results: ScanResult[], minMargin: number): ScanResult[] {
+function filterMockByMargin(results: MockResult[], minMargin: number): ScanResult[] {
+  const scannedAt = new Date().toISOString();
   return results.map((r) => ({
     ...r,
-    listings: r.listings.map((l) => ({ ...l, isDeal: l.margin >= minMargin })),
+    scannedAt,
+    listings: r.listings.map((l) => ({ ...l, isDeal: l.margin >= minMargin, isEarlyAuction: false })),
   }));
 }
 
@@ -161,10 +169,11 @@ function ScanPageInner() {
   const [watchlists,  setWatchlists]  = useState<WatchlistMeta[]>([]);
   const [selectedId, setSelectedId] = useState(initialWlId);
   const [minMargin,  setMinMargin]  = useState(DEFAULT_MARGIN);
-  const [scanning,   setScanning]   = useState(false);
-  const [results,    setResults]    = useState<ScanResult[] | null>(null);
-  const [dbAvail,    setDbAvail]    = useState(true);
-  const [usedMock,   setUsedMock]   = useState(false);
+  const [scanning,    setScanning]    = useState(false);
+  const [results,     setResults]     = useState<ScanResult[] | null>(null);
+  const [dbAvail,     setDbAvail]     = useState(true);
+  const [usedMock,    setUsedMock]    = useState(false);
+  const [maxAgeHours, setMaxAgeHours] = useState<number>(48);
 
   useEffect(() => {
     fetch('/api/watchlists')
@@ -227,6 +236,10 @@ function ScanPageInner() {
 
   const selectedWl = watchlists.find((w) => w.id === selectedId);
   const canScan    = !!selectedId && (selectedWl?.cardCount ?? 0) > 0 && !scanning;
+
+  const visibleResults = results && maxAgeHours > 0
+    ? results.filter((r) => Date.now() - new Date(r.scannedAt).getTime() < maxAgeHours * 3_600_000)
+    : results;
 
   // Auto-trigger scan when arriving from the wishlist page via "Scan for deals"
   const autoFired = useRef(false);
@@ -318,7 +331,21 @@ function ScanPageInner() {
       )}
 
       {results && !scanning && (
-        <ScanResults results={results} minMargin={minMargin} />
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: '0.75rem' }}>
+            <span style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', textTransform: 'uppercase', letterSpacing: '.05em' }}>Age filter</span>
+            {([24, 48, 0] as const).map((h) => (
+              <button
+                key={h}
+                className={`ftab${maxAgeHours === h ? ' on' : ''}`}
+                onClick={() => setMaxAgeHours(h)}
+              >
+                {h === 0 ? 'Off' : `${h}h`}
+              </button>
+            ))}
+          </div>
+          <ScanResults results={visibleResults ?? []} minMargin={minMargin} />
+        </>
       )}
     </div>
   );

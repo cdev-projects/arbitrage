@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { watchlistCards, WatchlistCard } from '@/db/schema/watchlist';
-import { scanResults } from '@/db/schema/scan-results';
-import { priceSnapshots } from '@/db/schema/snapshots';
 import { searchListings, EbayListing } from '@/lib/ebay';
 import { calcDeal, isDeal } from '@/lib/deal-algorithm';
 
@@ -83,6 +81,7 @@ async function runConcurrent<T, R>(
 
 export interface ScanResultItem {
   cardId:      string;
+  scannedAt:   string;
   cardName:    string;
   set:         string;
   cardNumber:  string;
@@ -102,6 +101,7 @@ export interface ScanResultItem {
     ebayUrl:          string;
     isLowConfidence:  boolean;
     isGraded:         boolean;
+    isEarlyAuction:   boolean;
     listingImageUrl?: string;
     endsAt?:          string;
     bidCount?:        number;
@@ -124,15 +124,11 @@ export async function POST(req: NextRequest) {
     watchlist?: WatchlistCard[];
   };
 
-  // Use client-supplied watchlist when available (no-DB mode),
-  // otherwise fall back to fetching from the database.
   let cards: WatchlistCard[];
-  let dbAvailable = false;
 
   try {
     const db = getDb();
     cards = await db.select().from(watchlistCards).where(eq(watchlistCards.isActive, true));
-    dbAvailable = true;
   } catch {
     if (clientWatchlist && clientWatchlist.length > 0) {
       cards = clientWatchlist;
@@ -148,23 +144,35 @@ export async function POST(req: NextRequest) {
 
     const allResults = await runConcurrent(cards, (card) => scanCardSafe(card, minMargin), CONCURRENCY);
 
+    const scannedAt = new Date().toISOString();
     const results: ScanResultItem[] = [];
 
     for (let i = 0; i < cards.length; i++) {
-      const card     = cards[i];
+      const card = cards[i];
       const { listings, error } = allResults[i];
 
       const scoredListings = listings.map((l) => {
         const deal = calcDeal(l.price, card.tcgMarket);
+        const hoursUntilClose = l.endsAt
+          ? (new Date(l.endsAt).getTime() - Date.now()) / 3_600_000
+          : null;
+        const wouldBeDeal = isDeal(deal.margin, minMargin) && !l.isLowConfidence;
+        const isEarlyAuction =
+          wouldBeDeal &&
+          l.listingType === 'auction' &&
+          hoursUntilClose !== null &&
+          hoursUntilClose > 1;
         return {
           ...l,
           ...deal,
-          isDeal: isDeal(deal.margin, minMargin) && !l.isLowConfidence,
+          isEarlyAuction,
+          isDeal: wouldBeDeal && !isEarlyAuction,
         };
       });
 
       results.push({
         cardId:     card.id,
+        scannedAt,
         cardName:   card.cardName,
         set:        card.set,
         cardNumber: card.cardNumber,
@@ -177,39 +185,6 @@ export async function POST(req: NextRequest) {
         error,
         listings:   scoredListings,
       });
-
-      // Persist scan results to DB only when DB is available
-      if (dbAvailable && listings.length > 0) {
-        const db = getDb();
-        await db.delete(scanResults).where(eq(scanResults.cardId, card.id));
-        await db.insert(scanResults).values(
-          scoredListings.map((l) => ({
-            cardId:      card.id,
-            tcgCardId:   card.tcgCardId ?? null,
-            listingId:   l.listingId,
-            title:       l.title,
-            price:       l.price,
-            condition:   l.condition,
-            listingType: l.listingType,
-            netProfit:   l.profit,
-            margin:      l.margin,
-            isDeal:      l.isDeal,
-            ebayUrl:     l.ebayUrl,
-          }))
-        );
-
-        // Daily price snapshot
-        const avgEbay = listings.reduce((s, l) => s + l.price, 0) / listings.length;
-        const dealCount = scoredListings.filter((l) => l.isDeal).length;
-        await db.insert(priceSnapshots).values({
-          cardId:         card.id,
-          tcgCardId:      card.tcgCardId ?? null,
-          condition:      card.condition,
-          tcgMarket:      card.tcgMarket,
-          avgEbayListing: avgEbay,
-          dealCount,
-        });
-      }
     }
 
     const isMock = !process.env.EBAY_CLIENT_ID || !process.env.EBAY_CLIENT_SECRET;

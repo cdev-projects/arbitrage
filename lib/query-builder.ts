@@ -45,7 +45,16 @@ const OP_RARITY_ABBREV: Record<string, string | null> = {
 //   that frequently appear in searches for high-value cards.
 // -altered: community shorthand for altered-art custom cards (different value).
 // -digital -lot -proxy -fake -reprint: carry over from original exclusions.
-const BASE_EXCL = '-digital -lot -proxy -fake -reprint -sleeve -playmat -binder -tin -booster -altered';
+const CUSTOM_EXCL = (process.env.CUSTOM_EXCLUSIONS ?? '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
+  .join(' ');
+
+const BASE_EXCL = [
+  '-digital -lot -proxy -fake -reprint -sleeve -playmat -binder -tin -booster -altered',
+  CUSTOM_EXCL,
+].filter(Boolean).join(' ');
 
 // Language exclusions for non-English cards.
 // Pokémon JP and EN use different card numbers, so JP cards rarely hit Tier 1,

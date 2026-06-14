@@ -2,10 +2,8 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as watchlistSchema from './schema/watchlist';
 import * as watchlistsSchema from './schema/wishlists';
-import * as snapshotsSchema from './schema/snapshots';
-import * as scanResultsSchema from './schema/scan-results';
 
-const schema = { ...watchlistSchema, ...watchlistsSchema, ...snapshotsSchema, ...scanResultsSchema };
+const schema = { ...watchlistSchema, ...watchlistsSchema };
 
 let db: ReturnType<typeof drizzle<typeof schema>>;
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import CostBreakdown from './CostBreakdown';
 import { shippingLabel } from '@/lib/deal-algorithm';
 
@@ -12,8 +12,9 @@ interface Listing {
   listingType:      string;
   ebayUrl:          string;
   isLowConfidence:  boolean;
-  isGraded:         boolean;
-  listingImageUrl?: string;
+  isGraded:          boolean;
+  isEarlyAuction?:   boolean;
+  listingImageUrl?:  string;
   endsAt?:          string;
   bidCount?:        number;
   currentBidPrice?: number;
@@ -54,19 +55,55 @@ function ListingTypePill({ lt }: { lt: string }) {
 function formatEndsIn(isoDate: string): string | null {
   const diff = new Date(isoDate).getTime() - Date.now();
   if (diff <= 0) return 'Ended';
-  const h = Math.floor(diff / 3_600_000);
+  const d = Math.floor(diff / 86_400_000);
+  const h = Math.floor((diff % 86_400_000) / 3_600_000);
   const m = Math.floor((diff % 3_600_000) / 60_000);
-  if (h > 48) return null;
-  if (h > 0) return `Ends ${h}h ${m}m`;
-  return `Ends ${m}m`;
+  const s = Math.floor((diff % 60_000) / 1_000);
+  if (d > 0)  return `Ends ${d}d ${h}h`;
+  if (h > 0)  return `Ends ${h}h ${m}m`;
+  if (m > 0)  return `Ends ${m}m ${s}s`;
+  return `Ends ${s}s`;
 }
 
 export default function ResultCard({ listing, game, art, imageUrl, compMin, compMax, compCount }: Props) {
   const [showBreakdown, setShowBreakdown] = useState(false);
-  const mc        = listing.isDeal ? 'pos' : 'neg';
+  const mc        = listing.isDeal ? 'pos' : listing.isEarlyAuction ? 'watch' : 'neg';
   const isAuction = listing.listingType === 'auction' || listing.listingType === 'both';
   const thumbSrc  = listing.listingImageUrl ?? imageUrl ?? null;
-  const endsLabel = listing.endsAt ? formatEndsIn(listing.endsAt) : null;
+
+  const [endsLabel, setEndsLabel] = useState(() =>
+    listing.endsAt ? formatEndsIn(listing.endsAt) : null
+  );
+
+  useEffect(() => {
+    if (!listing.endsAt) return;
+    const tick = () => setEndsLabel(formatEndsIn(listing.endsAt!));
+    const id = setInterval(tick, 1_000);
+    return () => clearInterval(id);
+  }, [listing.endsAt]);
+
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [popStyle, setPopStyle] = useState<React.CSSProperties>({
+    left: '48px', top: '0', opacity: 0, pointerEvents: 'none',
+  });
+
+  const POP_W = 410;
+  const POP_H = 560;
+
+  const handleMouseEnter = useCallback(() => {
+    if (!wrapRef.current || !thumbSrc) return;
+    const rect = wrapRef.current.getBoundingClientRect();
+    const style: React.CSSProperties = { opacity: 1, pointerEvents: 'auto' };
+    style.left  = rect.right + POP_W < window.innerWidth  - 8 ? '48px' : 'auto';
+    style.right = rect.right + POP_W < window.innerWidth  - 8 ? 'auto' : '48px';
+    style.top   = rect.top  + POP_H < window.innerHeight - 8 ? '0'    : 'auto';
+    style.bottom= rect.top  + POP_H < window.innerHeight - 8 ? 'auto' : '0';
+    setPopStyle(style);
+  }, [thumbSrc]);
+
+  const handleMouseLeave = useCallback(() => {
+    setPopStyle(prev => ({ ...prev, opacity: 0, pointerEvents: 'none' }));
+  }, []);
 
   const range   = compMax - compMin;
   const fillPct = range > 0
@@ -75,16 +112,23 @@ export default function ResultCard({ listing, game, art, imageUrl, compMin, comp
   const barColor = listing.isDeal ? 'var(--teal)' : listing.margin > 0 ? 'var(--amber)' : 'var(--coral)';
 
   return (
-    <div className={`rcard ${listing.isDeal ? 'deal' : ''}`}>
+    <div className={`rcard ${listing.isDeal ? 'deal' : listing.isEarlyAuction ? 'watching' : ''}`}>
       <div className="rcard-body">
-        {thumbSrc
-          ? <img src={thumbSrc} alt={art} className={`card-art-sm card-art-img art-${game}`} />
-          : <div className={`card-art-sm art-${game}`}>{art}</div>
-        }
+        <div className="card-art-wrap" ref={wrapRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+          {thumbSrc
+            ? <img src={thumbSrc} alt={art} className={`card-art-sm card-art-img art-${game}`} />
+            : <div className={`card-art-sm art-${game}`}>{art}</div>
+          }
+          {thumbSrc && (
+            <div className="card-art-pop" style={popStyle}>
+              <img src={thumbSrc} alt={art} className="card-art-pop-img" />
+            </div>
+          )}
+        </div>
         <div>
           <div className="rbadges">
-            <span className={`pill ${listing.isDeal ? 'pill-deal' : 'pill-pass'}`}>
-              {listing.isDeal ? 'Deal ✓' : 'Pass'}
+            <span className={`pill ${listing.isDeal ? 'pill-deal' : listing.isEarlyAuction ? 'pill-watch' : 'pill-pass'}`}>
+              {listing.isDeal ? 'Deal ✓' : listing.isEarlyAuction ? 'Watching' : 'Pass'}
             </span>
             <span className="pill pill-cond">{listing.condition}</span>
             <ListingTypePill lt={listing.listingType} />
@@ -113,7 +157,13 @@ export default function ResultCard({ listing, game, art, imageUrl, compMin, comp
             <div><div className="pfl">Listed</div><div className="pfv">${listing.price.toFixed(2)}</div></div>
             <div><div className="pfl">Est. sell</div><div className="pfv">${listing.sellAt.toFixed(2)}</div></div>
           </div>
-          {isAuction && (
+          {listing.isEarlyAuction && (
+            <div className="anote" style={{color: 'var(--amber)'}}>
+              <i className="ti ti-clock" aria-hidden="true" style={{fontSize:11}} />
+              Auction not yet closing — check back near end time
+            </div>
+          )}
+          {isAuction && !listing.isEarlyAuction && (
             <div className="anote">
               <i className="ti ti-clock" aria-hidden="true" style={{fontSize:11}} />
               Auction — margin shown at current bid

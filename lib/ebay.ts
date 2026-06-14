@@ -74,8 +74,8 @@ function mapItems(
   return items.map((item): EbayListing => {
     const title = String(item.title ?? '');
 
-    const priceObj = item.price as { value?: string } | undefined;
-    const price    = parseFloat(priceObj?.value ?? '0');
+    const priceObj      = item.price as { value?: string } | undefined;
+    const startingPrice = parseFloat(priceObj?.value ?? '0');
 
     const buyingOptions = item.buyingOptions as string[] | undefined;
     let listingType: 'bin' | 'auction' | 'both' = 'bin';
@@ -85,10 +85,14 @@ function mapItems(
       listingType = 'auction';
     }
 
-    const imageObj         = item.image as { imageUrl?: string } | undefined;
-    const currentBidObj    = item.currentBidPrice as { value?: string } | undefined;
-    const sellerObj        = item.seller as { feedbackScore?: number } | undefined;
-    const itemWebUrl       = item.itemWebUrl as string | undefined;
+    const imageObj      = item.image as { imageUrl?: string } | undefined;
+    const currentBidObj = item.currentBidPrice as { value?: string } | undefined;
+    const sellerObj     = item.seller as { feedbackScore?: number } | undefined;
+    const itemWebUrl    = item.itemWebUrl as string | undefined;
+
+    const currentBidPrice = currentBidObj?.value != null ? parseFloat(currentBidObj.value) : undefined;
+    const isAuction       = listingType === 'auction' || listingType === 'both';
+    const price           = isAuction && currentBidPrice != null ? currentBidPrice : startingPrice;
 
     return {
       listingId:        String(item.itemId ?? ''),
@@ -99,10 +103,10 @@ function mapItems(
       ebayUrl:          itemWebUrl ?? `https://www.ebay.com/itm/${item.itemId}`,
       isLowConfidence,
       isGraded:         GRADED_RE.test(title),
-      listingImageUrl:  imageObj?.imageUrl,
+      listingImageUrl:  imageObj?.imageUrl?.replace(/s-l\d+\.jpg$/, 's-l500.jpg'),
       endsAt:           item.itemEndDate as string | undefined,
       bidCount:         item.bidCount as number | undefined,
-      currentBidPrice:  currentBidObj?.value != null ? parseFloat(currentBidObj.value) : undefined,
+      currentBidPrice,
       sellerFeedback:   sellerObj?.feedbackScore,
     };
   });

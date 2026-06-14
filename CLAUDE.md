@@ -21,6 +21,9 @@ When a plan produces a decision worth keeping, capture it into this file via `/c
 npm run dev          # start dev server (Next.js + Turbopack)
 npm run build        # production build
 npm run lint         # ESLint
+npm run test         # run unit tests (vitest)
+npm run test:watch   # vitest in watch mode
+npm run test:coverage # vitest with coverage report
 npm run db:generate  # generate Drizzle migration files from schema changes
 npm run db:migrate   # apply pending migrations to Supabase
 npm run db:push      # push schema directly (dev/prototyping only — prefer generate+migrate)
@@ -63,12 +66,15 @@ npm run db:studio    # Drizzle Studio UI
 - **Card numbers unquoted** — eBay's search handles slash variants (`199/165`, `199 / 165`) naturally.
 - **Price ceiling** — deal-math derived: `sellAt × (1 − eBayFee − payFee − minMargin/100) − $3`. Only fetches listings that could actually be deals at the user's `minMargin`. For a $100 card at 30% threshold: old ceiling $110 → new ceiling ~$43. `minMargin` is threaded from the scan POST body through `searchListings(card, tcgMarket, minMargin)` to `buildFilter`. Exported as `dealPriceCeiling(tcgMarket, minMargin)` in `lib/query-builder.ts`.
 - **`BASE_EXCL`** — `-digital -lot -proxy -fake -reprint -sleeve -playmat -binder -tin -booster -altered`. Eliminates accessories and sealed product that match card names in eBay titles. Applied to all games at all tiers.
+- **`CUSTOM_EXCLUSIONS`** env var — comma-separated terms appended to `BASE_EXCL` at runtime. Example: `CUSTOM_EXCLUSIONS=-"extended art",-sticker,-display`. Parsed in `lib/query-builder.ts`; takes effect without a code change.
 
 **Token cache** — `globalThis.__ebayToken` survives Next.js serverless warm restarts. Invalidated 60 s before actual expiry.
 
 **Per-card error isolation** — `scanCardSafe` in `app/api/scan/route.ts` wraps each card scan in try/catch. A failed card produces `{ listings: [], error: string }` instead of failing the whole scan. The `error` field surfaces in `ScanResults` as an error count in the fee strip.
 
 **Tier 3 never isDeal** — `isLowConfidence` listings (Tier 3) are excluded from `isDeal` regardless of margin. They appear in the "All" tab with the "Broad search" badge as informational only. This prevents false positives from wrong-card or off-topic matches. Logic in `app/api/scan/route.ts`: `isDeal: isDeal(margin, minMargin) && !l.isLowConfidence`.
+
+**`isEarlyAuction`** — an auction that would be a deal at current bid but closes more than 1 hour from now. Excluded from `isDeal` (bid price will move before close) and surfaced in a separate "Watching" amber tab. Logic: `wouldBeDeal && listingType === 'auction' && hoursUntilClose > 1`.
 
 ## eBay listing fields
 
@@ -78,13 +84,15 @@ npm run db:studio    # Drizzle Studio UI
 |-------|--------|-------|
 | `isGraded` | title regex `/PSA\|CGC\|BGS\|graded\|slab/i` | Post-fetch detection; graded cards are included, not excluded |
 | `isLowConfidence` | set by query tier | `true` for Tier 3 results only |
-| `listingImageUrl` | `item.image.imageUrl` | eBay listing photo; shown in ResultCard if present |
-| `endsAt` | `item.itemEndDate` | ISO string; UI computes "Ends Xh Ym" at render time |
+| `listingImageUrl` | `item.image.imageUrl` with `s-l225` → `s-l500` swap | eBay listing photo at 500px quality; hover popup in ResultCard |
+| `endsAt` | `item.itemEndDate` | ISO string; UI shows `Xd Yh` / `Xh Ym` / `Xm Ys` countdown, ticking live |
 | `bidCount` | `item.bidCount` | Shown next to listing type pill when > 0 |
-| `currentBidPrice` | `item.currentBidPrice.value` | Float |
+| `currentBidPrice` | `item.currentBidPrice.value` | Used as `price` for auctions — eBay's `price` field is only the starting price |
 | `sellerFeedback` | `item.seller.feedbackScore` | Integer |
 
-**`sold30` is gone** — Browse v1 doesn't provide sold count. The `sold_30` DB column has been dropped (migration required: `npm run db:generate && npm run db:migrate`).
+**Auction price** — `price` from eBay Browse v1 is the *starting bid* for auctions, not the current bid. `mapItems()` in `lib/ebay.ts` uses `currentBidPrice` as the effective price for auction and BIN+Auction listings.
+
+**`sold30` is gone** — Browse v1 doesn't provide sold count. The `sold_30` DB column has been dropped.
 
 ## Design system
 
@@ -108,6 +116,23 @@ Matches the Fraunces / DM Mono / DM Sans design from the original mockups. CSS c
 - **`cleanName()`** in `lib/tcg.ts` strips artifacts the TCG API embeds in card names: trailing `NNN/NNN` numbers, promo codes like `SWSH050`, and trailing ` - `. Apply at the `toCard()` mapping layer, not in UI.
 - **Price formatting** — always render prices with `.toFixed(2)`. Never interpolate a raw `number` into a price string.
 - **DB naming** — DB tables and application layer are now aligned: `watchlists` table, `watchlist_id` FK column, `watchlist` everywhere in routes and TypeScript.
+
+## Scan UI features
+
+- **Watching tab** — amber tab separate from Deals. Shows `isEarlyAuction` listings (deal-quality but not yet closing). Countdown pill ticks live in seconds.
+- **Age filter** — 24h / 48h / Off toggle on the scan page. Filters `visibleResults` by `scannedAt` timestamp returned from the scan API.
+- **Image hover popup** — hovering the 40px thumbnail in a ResultCard shows a 400px popup. Viewport-aware: flips left if near the right edge, anchors bottom if near the bottom. Uses `opacity`/`pointer-events` (not `display:none`) so the image preloads immediately. Images fetched at `s-l500` quality.
+- **Dismiss feature** — removed. Requires a proper `dismissed_listings` table design and a DB view. Do not re-add until designed in Cowork.
+- **No DB writes in scan hot path** — `scan_results` and `price_snapshots` tables have been dropped from the Drizzle schema and removed from `app/api/scan/route.ts`. The scan route reads only from `watchlist_cards` and returns eBay results directly. Dashboard is stubbed pending a full redesign.
+
+## Engineering guardrails
+
+Before implementing any feature touching DB or API routes, explicitly check:
+1. **Latency** — does this add synchronous work to the hot path? If so, can it be deferred or async?
+2. **Atomicity** — if writing to multiple tables, what happens if one write fails?
+3. **Test coverage** — all pure logic functions need unit tests in `lib/__tests__/`. Flag when a new exportable function is added without a corresponding test.
+
+Unit tests live in `lib/__tests__/` and run with `npm run test`. Current coverage: `deal-algorithm.ts` and `query-builder.ts`.
 
 ## Phase plan
 
